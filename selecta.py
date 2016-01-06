@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import fcntl
 import termios
 import sys
@@ -41,10 +42,11 @@ line_count = 0
 line_count_total = 0
 
 palette = [
-    ('head',  '', '', '', '#aaa', '#23b'),
-    ('body',  '', '', '', '#ddd', '#000'),
-    ('focus', '', '', '', '#000', '#da0'),
-    ('input', '', '', '', '#fff', '#23b'),
+    ('head',    '', '', '', '#aaa', '#23b'),
+    ('body',    '', '', '', '#ddd', '#000'),
+    ('focus',   '', '', '', '#000', '#da0'),
+    ('input',   '', '', '', '#fff', '#23b'),
+    ('pattern', '', '', '', '#ff0', '#000'),
 ]
 
 signal.signal(signal.SIGINT, lambda *_: sys.exit(0))  # die with style
@@ -52,10 +54,17 @@ signal.signal(signal.SIGINT, lambda *_: sys.exit(0))  # die with style
 
 class ItemWidget(urwid.WidgetWrap):
 
-    def __init__(self, description):
-        self.content = description
-        # self.item = [urwid.AttrMap(urwid.Text([self.content, ('test', 'bla')]), 'body', 'focus')]
-        self.item = [urwid.AttrMap(urwid.Text(self.content), 'body', 'focus')]
+    def __init__(self, content, match=None):
+        self.content = content
+
+        if match is not None:
+            parts = content.partition(match)
+            self.item = [urwid.AttrMap(urwid.Text(
+                [('body', parts[0]), ('pattern', parts[1]), ('body', parts[2])]
+            ), 'body', 'focus')]
+        else:
+            self.item = [urwid.AttrMap(urwid.Text(self.content), 'body', 'focus')]
+
         urwid.WidgetWrap.__init__(self, urwid.Columns(self.item))
 
     def selectable(self):
@@ -104,7 +113,7 @@ class LineCountWidget(urwid.Text):
 
 class Selector(object):
     def __init__(self):
-        self.list_item_widgets = [ItemWidget(item.strip()) for item in list_items]
+        self.list_item_widgets = []
 
         self.line_count_display = LineCountWidget('')
         self.search_edit = SearchEdit(edit_text='')
@@ -137,12 +146,12 @@ class Selector(object):
 
         logging.info(self.loop.screen.get_cols_rows())
 
+        self.update_list('')
         self.loop.run()
 
     def list_resize(self, height):
-        logging.info(height)
+        logging.info('resize: {}'.format(height))
         self.line_count_display.set_text('{}/{} '.format(len(self.list_item_widgets), height))
-        self.line_count_display.pack()
 
     def meep(self, *args):
         logging.info(args)
@@ -170,7 +179,7 @@ class Selector(object):
 
     def update_list(self, search_text):
         if search_text == '':  # show whole list_items
-            self.item_list[:] = self.list_item_widgets
+            self.item_list[:] = [ItemWidget(item.strip()) for item in list_items]
 
         else:
             pattern = '{}'.format(search_text)
@@ -183,15 +192,20 @@ class Selector(object):
             if self.case_modifier:
                 flags ^= re.IGNORECASE
 
-            self.item_list[:] = [
-                ItemWidget(item.strip()) for item in list_items
-                if re.search(pattern, item, flags)
-            ]
+            items = []
+            for item in list_items:
+                match = re.search(pattern, item, flags)
+                if match:
+                    items.append(ItemWidget(item.strip(), match=match.group()))
+            self.item_list[:] = items
 
         try:
             self.item_list.set_focus(0)
         except:
             pass
+
+    def highlight_pattern(self, match):
+        print(match)
 
     def edit_change(self, widget, search_text):
         self.update_list(search_text)
