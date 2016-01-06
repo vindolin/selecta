@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import fcntl
 import termios
 import sys
@@ -12,16 +12,12 @@ import fileinput
 import logging
 logging.basicConfig(filename='rivig.log', filemode='w', level=logging.INFO)
 
-fd = sys.stdin.fileno()
-
-old = termios.tcgetattr(fd)
-new = termios.tcgetattr(fd)
-
 list_items = []
+
 for line in fileinput.input():
     line = line.split(None, 1)[1]
     if 'rivig.py' not in line:
-        list_items.append(line.decode(sys.stdout.encoding).strip())
+        list_items.append(line.strip())
 list_items.reverse()
 
 line_count = 0
@@ -66,7 +62,7 @@ class SearchEdit(urwid.Edit):
     signals = ['done', 'toggle_regexp_modifier', 'toggle_case_modifier']
 
     def keypress(self, size, key):
-        logging.info('search {} {}'.format(size, key))
+        logging.info(u'search {} {}'.format(size, key))
         if key == 'enter':
             logging.info(self.get_edit_text())
             urwid.emit_signal(self, 'done', self.get_edit_text())
@@ -180,7 +176,7 @@ class Selector(object):
             self.item_list[:] = [ItemWidget(item.strip()) for item in list_items]
 
         else:
-            pattern = '{}'.format(search_text)
+            pattern = u'{}'.format(search_text)
 
             flags = re.IGNORECASE | re.UNICODE
 
@@ -213,7 +209,7 @@ class Selector(object):
         self.view.set_focus('body')
 
     def on_unhandled_input(self, input_):
-        logging.info('input "{}"'.format(input_))
+        logging.info(u'input "{}"'.format(input_))
         if isinstance(input_, tuple):  # mouse events
             return True
 
@@ -224,7 +220,7 @@ class Selector(object):
                 return
 
             self.view.set_header(urwid.AttrMap(
-                urwid.Text('selected: %s' % str(focus)), 'head'))
+                urwid.Text(u'selected: {}'.format(focus)), 'head'))
 
             self.inject_command(str(focus))
             raise urwid.ExitMainLoop()
