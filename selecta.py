@@ -24,31 +24,33 @@ line_count = 0
 line_count_total = 0
 
 palette = [
-    ('head',         '', '', '', '#aaa', '#23b'),
-    ('body',         '', '', '', '#ddd', '#000'),
-    ('focus',        '', '', '', '#000', '#da0'),
-    ('input',        '', '', '', '#fff', '#23b'),
-    ('item',         '', '', '', '#fff', ''),
-    ('item_focus',   '', '', '', '',     '#da0'),
-    ('item_pattern', '', '', '', 'bold,#fff', ''),
+    ('head',          '', '', '', '#aaa', '#23b'),
+    ('body',          '', '', '', '#ddd', '#000'),
+    ('focus',         '', '', '', '#000', '#da0'),
+    ('input',         '', '', '', '#fff', '#23b'),
+    ('item',          '', '', '', '#fff', ''),
+    ('pattern', '', '', '', 'bold,#f55', ''),
+    ('pattern_focus', '', '', '', 'bold,#a00', '#da0'),
+    ('line','', '', '', '', ''),
+    ('line_focus','', '', '', '#000', '#da0'),
 ]
 
 signal.signal(signal.SIGINT, lambda *_: sys.exit(0))  # die with style
 
 
-class ItemWidget(urwid.Columns):
+class ItemWidget(urwid.WidgetWrap):
     def __init__(self, content, match=None):
         self.content = content
 
         if match is not None:
             parts = content.partition(match)
-            self.item = [urwid.AttrMap(urwid.Text(
-                [parts[0], ('item_pattern', parts[1]), parts[2]]
-            ), 'item', 'item_focus')]
+            self.item = urwid.AttrMap(urwid.Text(
+                [parts[0], ('pattern', parts[1]), parts[2]]
+            ),'line',  {'pattern': 'pattern_focus', None: 'line_focus'})
         else:
-            self.item = [urwid.AttrMap(urwid.Text(self.content), 'item', 'item_focus')]
+            self.item = urwid.AttrMap(urwid.Text(self.content), 'item', 'line_focus')
 
-        urwid.Columns.__init__(self, self.item)
+        urwid.WidgetWrap.__init__(self, self.item)
 
     def selectable(self):
         return True
