@@ -1,6 +1,8 @@
 # selecta
 ## Interactively select an entry from your history.
 
+This is a python clone of François Fleuret's brilliant [selector](http://www.idiap.ch/~fleuret/software.html#selector)
+
 ```
 $ selecta <(history)
 ```
