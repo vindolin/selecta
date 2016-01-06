@@ -9,27 +9,30 @@ import re
 import os
 import fileinput
 
-import logging
-logging.basicConfig(filename='rivig.log', filemode='w', level=logging.INFO)
+
+"""Installation:
+create a symlink:
+$ sudo ln -s selecta.py /usr/bin/selecta
+Add an entry to your /etc/bash.bashrc:
+bind '"\C-[e":"\C-a\C-kmcedit\C-m"'
+"""
 
 list_items = []
 
 for line in fileinput.input():
     line = line.split(None, 1)[1]
-    if 'rivig.py' not in line:
+    if 'selecta <(history)' not in line:
         list_items.append(line.strip())
 list_items.reverse()
 
-line_count = 0
 line_count_total = 0
 
 palette = [
-    ('head',          '', '', '', '#aaa', '#23b'),
-    ('body',          '', '', '', '#ddd', '#000'),
-    ('focus',         '', '', '', '#000', '#da0'),
-    ('input',         '', '', '', '#fff', '#23b'),
-    ('item',          '', '', '', '#fff', ''),
-    ('pattern', '', '', '', 'bold,#f55', ''),
+    ('head', '', '', '', '#aaa', '#618'),
+    ('body', '', '', '', '#ddd', '#000'),
+    ('focus', '', '', '', '#000', '#da0'),
+    ('input', '', '', '', '#fff', '#618'),
+    ('pattern', '', '', '', '#f91', ''),
     ('pattern_focus', '', '', '', 'bold,#a00', '#da0'),
     ('line','', '', '', '', ''),
     ('line_focus','', '', '', '#000', '#da0'),
@@ -44,11 +47,15 @@ class ItemWidget(urwid.WidgetWrap):
 
         if match is not None:
             parts = content.partition(match)
-            self.item = urwid.AttrMap(urwid.Text(
-                [parts[0], ('pattern', parts[1]), parts[2]]
-            ),'line',  {'pattern': 'pattern_focus', None: 'line_focus'})
+            self.item = urwid.AttrMap(
+                urwid.Text(
+                    [parts[0],
+                    ('pattern', parts[1]),
+                    parts[2]
+                ]
+            ), 'line', {'pattern': 'pattern_focus', None: 'line_focus'})
         else:
-            self.item = urwid.AttrMap(urwid.Text(self.content), 'item', 'line_focus')
+            self.item = urwid.AttrMap(urwid.Text(self.content), 'line', 'line_focus')
 
         urwid.WidgetWrap.__init__(self, self.item)
 
@@ -64,9 +71,7 @@ class SearchEdit(urwid.Edit):
     signals = ['done', 'toggle_regexp_modifier', 'toggle_case_modifier']
 
     def keypress(self, size, key):
-        logging.info(u'search {} {}'.format(size, key))
         if key == 'enter':
-            logging.info(self.get_edit_text())
             urwid.emit_signal(self, 'done', self.get_edit_text())
             return
         elif key == 'esc':
@@ -120,7 +125,7 @@ class Selector(object):
         urwid.connect_signal(self.search_edit, 'toggle_regexp_modifier', self.toggle_regexp_modifier)
         urwid.connect_signal(self.search_edit, 'change', self.edit_change)
 
-        header = urwid.AttrMap(urwid.Columns([
+        header = urwid.AttrMap(urwid.Columns([  # TODO do I really need columns?
             (8, self.line_count_display), # TODO pack at runtime?
             urwid.AttrMap(self.search_edit, 'input', 'input'),  # TODO pack at runtime?
             self.modifier_display,
@@ -131,7 +136,6 @@ class Selector(object):
 
         urwid.connect_signal(self.listbox, 'resize', self.list_resize)
 
-        # self.view = urwid.Frame(body=urwid.AttrMap(self.listbox, 'body'), header=header)
         self.view = urwid.Frame(body=self.listbox, header=header)
 
         self.regexp_modifier = False
@@ -140,17 +144,14 @@ class Selector(object):
         self.loop = urwid.MainLoop(self.view, palette, unhandled_input=self.on_unhandled_input)
         self.loop.screen.set_terminal_properties(colors=256)
 
-        logging.info(self.loop.screen.get_cols_rows())
-
         self.update_list('')
         self.loop.run()
 
     def list_resize(self, height):
-        logging.info('resize: {}'.format(height))
         self.line_count_display.set_text('{}/{} '.format(len(self.list_item_widgets), height))
 
     def meep(self, *args):
-        logging.info(args)
+        logger.info(args)
 
     def toggle_case_modifier(self):
         self.case_modifier = not self.case_modifier
@@ -207,11 +208,9 @@ class Selector(object):
         self.update_list(search_text)
 
     def edit_done(self, search_text):
-        # self.update_list(search_text)
         self.view.set_focus('body')
 
     def on_unhandled_input(self, input_):
-        logging.info(u'input "{}"'.format(input_))
         if isinstance(input_, tuple):  # mouse events
             return True
 
