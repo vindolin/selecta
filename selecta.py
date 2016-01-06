@@ -2,6 +2,7 @@
 import fcntl
 import termios
 import sys
+import struct
 import urwid
 import subprocess
 import signal
@@ -248,6 +249,8 @@ class Selector(object):
         return True
 
     def inject_command(self, command):
+        command = (struct.pack('B', c) for c in os.fsencode(command))
+
         fd = sys.stdin.fileno()
         old = termios.tcgetattr(fd)
         new = termios.tcgetattr(fd)
