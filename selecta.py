@@ -17,19 +17,6 @@ fd = sys.stdin.fileno()
 old = termios.tcgetattr(fd)
 new = termios.tcgetattr(fd)
 
-
-# list_items = []
-# for line in open(os.path.expanduser('~/.bash_history'), 'rb'):
-#     try:
-#         list_items.append(line.decode(sys.stdout.encoding).strip())
-#     except:
-#         raise
-# list_items.reverse()
-
-# list_items = subprocess.check_output('bash -i -c "history -r; history"', shell=True)
-# list_items = [item.split(None, 1)[1] for item in list_items.decode(sys.stdout.encoding).strip().split('\n')]
-# list_items.reverse()
-
 list_items = []
 for line in fileinput.input():
     line = line.split(None, 1)[1]
@@ -37,35 +24,35 @@ for line in fileinput.input():
         list_items.append(line.decode(sys.stdout.encoding).strip())
 list_items.reverse()
 
-
 line_count = 0
 line_count_total = 0
 
 palette = [
-    ('head',    '', '', '', '#aaa', '#23b'),
-    ('body',    '', '', '', '#ddd', '#000'),
-    ('focus',   '', '', '', '#000', '#da0'),
-    ('input',   '', '', '', '#fff', '#23b'),
-    ('pattern', '', '', '', '#ff0', '#000'),
+    ('head',         '', '', '', '#aaa', '#23b'),
+    ('body',         '', '', '', '#ddd', '#000'),
+    ('focus',        '', '', '', '#000', '#da0'),
+    ('input',        '', '', '', '#fff', '#23b'),
+    ('item',         '', '', '', '#fff', ''),
+    ('item_focus',   '', '', '', '',     '#da0'),
+    ('item_pattern', '', '', '', 'bold,#fff', ''),
 ]
 
 signal.signal(signal.SIGINT, lambda *_: sys.exit(0))  # die with style
 
 
-class ItemWidget(urwid.WidgetWrap):
-
+class ItemWidget(urwid.Columns):
     def __init__(self, content, match=None):
         self.content = content
 
         if match is not None:
             parts = content.partition(match)
             self.item = [urwid.AttrMap(urwid.Text(
-                [('body', parts[0]), ('pattern', parts[1]), ('body', parts[2])]
-            ), 'body', 'focus')]
+                [parts[0], ('item_pattern', parts[1]), parts[2]]
+            ), 'item', 'item_focus')]
         else:
-            self.item = [urwid.AttrMap(urwid.Text(self.content), 'body', 'focus')]
+            self.item = [urwid.AttrMap(urwid.Text(self.content), 'item', 'item_focus')]
 
-        urwid.WidgetWrap.__init__(self, urwid.Columns(self.item))
+        urwid.Columns.__init__(self, self.item)
 
     def selectable(self):
         return True
@@ -75,7 +62,7 @@ class ItemWidget(urwid.WidgetWrap):
 
 
 class SearchEdit(urwid.Edit):
-
+    __metaclass__ = urwid.signals.MetaSignals
     signals = ['done', 'toggle_regexp_modifier', 'toggle_case_modifier']
 
     def keypress(self, size, key):
@@ -96,20 +83,30 @@ class SearchEdit(urwid.Edit):
             urwid.emit_signal(self, 'change', self, self.get_edit_text())
             return
         elif key == 'down':
-            urwid.emit_signal(self, 'done', '')
+            urwid.emit_signal(self, 'done', None)
             return
 
         urwid.Edit.keypress(self, size, key)
 
+
 class ResultList(urwid.ListBox):
+    __metaclass__ = urwid.signals.MetaSignals
     signals = ['resize']
 
+    def __init__(self, *args):
+        self.last_size = 0
+        urwid.ListBox.__init__(self, *args)
+
     def render(self, size, focus):
-        urwid.emit_signal(self, 'resize', size[1])
+        if size != self.last_size:
+            self.last_size = size
+            urwid.emit_signal(self, 'resize', size[1])
         return urwid.ListBox.render(self, size, focus)
+
 
 class LineCountWidget(urwid.Text):
     pass
+
 
 class Selector(object):
     def __init__(self):
@@ -136,7 +133,8 @@ class Selector(object):
 
         urwid.connect_signal(self.listbox, 'resize', self.list_resize)
 
-        self.view = urwid.Frame(body=urwid.AttrMap(self.listbox, 'body'), header=header)
+        # self.view = urwid.Frame(body=urwid.AttrMap(self.listbox, 'body'), header=header)
+        self.view = urwid.Frame(body=self.listbox, header=header)
 
         self.regexp_modifier = False
         self.case_modifier = False
@@ -211,7 +209,7 @@ class Selector(object):
         self.update_list(search_text)
 
     def edit_done(self, search_text):
-        self.update_list(search_text)
+        # self.update_list(search_text)
         self.view.set_focus('body')
 
     def on_unhandled_input(self, input_):
@@ -229,6 +227,7 @@ class Selector(object):
                 urwid.Text('selected: %s' % str(focus)), 'head'))
 
             self.inject_command(str(focus))
+            raise urwid.ExitMainLoop()
 
         elif input_ == 'tab':
             self.toggle_case_modifier()
@@ -260,7 +259,6 @@ class Selector(object):
         for c in command:
             fcntl.ioctl(fd, termios.TIOCSTI, c)
         termios.tcsetattr(fd, termios.TCSANOW, old)
-        raise urwid.ExitMainLoop()
 
 
 if __name__ == '__main__':
