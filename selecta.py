@@ -47,12 +47,12 @@ signal.signal(signal.SIGINT, lambda *_: sys.exit(0))  # die with style
 
 
 class ItemWidget(urwid.WidgetWrap):
-    def __init__(self, content, match=None):
-        self.content = content
+    def __init__(self, list_item, match=None):
+        self.list_item = list_item
 
         if match is not None:
-            parts = content.partition(match)
-            self.item = urwid.AttrMap(
+            parts = self.list_item.partition(match)
+            text = urwid.AttrMap(
                 urwid.Text(
                     [parts[0],
                     ('pattern', parts[1]),
@@ -60,9 +60,9 @@ class ItemWidget(urwid.WidgetWrap):
                 ]
             ), 'line', {'pattern': 'pattern_focus', None: 'line_focus'})
         else:
-            self.item = urwid.AttrMap(urwid.Text(self.content), 'line', 'line_focus')
+            text = urwid.AttrMap(urwid.Text(self.list_item), 'line', 'line_focus')
 
-        urwid.WidgetWrap.__init__(self, self.item)
+        urwid.WidgetWrap.__init__(self, text)
 
     def selectable(self):
         return True
@@ -184,7 +184,7 @@ class Selector(object):
             self.item_list[:] = [ItemWidget(item.strip()) for item in list_items]
 
         else:
-            pattern = u'{}'.format(search_text)
+            pattern = '{}'.format(search_text)
 
             flags = re.IGNORECASE | re.UNICODE
 
@@ -221,14 +221,14 @@ class Selector(object):
 
         if input_ == 'enter':
             try:
-                focus = self.listbox.get_focus()[0].content
+                list_item = self.listbox.get_focus()[0].list_item
             except AttributeError:  # empty list
                 return
 
             self.view.set_header(urwid.AttrMap(
-                urwid.Text(u'selected: {}'.format(focus)), 'head'))
+                urwid.Text('selected: {}'.format(list_item)), 'head'))
 
-            self.inject_command(str(focus))
+            self.inject_command(list_item)
             raise urwid.ExitMainLoop()
 
         elif input_ == 'tab':
