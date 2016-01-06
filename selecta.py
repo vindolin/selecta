@@ -14,7 +14,7 @@ import fileinput
 create a symlink:
 $ sudo ln -s selecta.py /usr/bin/selecta
 Add an entry to your .bashrc:
-bind '"\C-[e":"\C-a\C-kmcedit\C-m"'
+bind '"\C-[e":"\C-a\C-kselecta <(history)\C-m"'
 """
 
 list_items = []
