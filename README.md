@@ -4,7 +4,7 @@
 This is a python clone of François Fleuret's brilliant [selector](http://www.idiap.ch/~fleuret/software.html#selector) utility.
 
 ```
-$ selecta <(history)
+$ selecta.py <(history)
 ```
 
 ## Keys
