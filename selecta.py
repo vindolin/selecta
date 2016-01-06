@@ -12,9 +12,13 @@ import fileinput
 
 
 """Installation:
+test with:
+$ python3 selecta.py <(history)
+
 create a symlink:
 $ sudo ln -s selecta.py /usr/bin/selecta
-Add this to your .bashrc to bind the command to [ALT]+e:
+
+Add this to your .bashrc to bind the command to ALT+e:
 bind '"\C-[e":"\C-a\C-kselecta <(history)\C-m"'
 """
 
@@ -199,7 +203,7 @@ class Selector(object):
 
         try:
             self.item_list.set_focus(0)
-        except:
+        except IndexError:  # no items
             pass
 
     def highlight_pattern(self, match):
