@@ -2,7 +2,7 @@ selecta - Interactively select an entry from your bash/zsh history.
 -------------------------------------------------------------------
 
 This is a python clone of François Fleuret's excellent `selector
-<http://www.idiap.ch/~fleuret/software.html#selector/>`_
+<http://www.idiap.ch/~fleuret/software.html#selector/>`_ tool.
 
 Usage
 -----
@@ -33,6 +33,9 @@ Add this to your .bashrc to bind the command to ALT+e:
 
     bind '"\C-[e":"\C-a\C-kselecta <(history)\C-m"'
 
+
+--help output
+-------------
 
 .. code-block::
 
