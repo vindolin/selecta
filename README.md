@@ -1,10 +1,10 @@
 # selecta
 ## Interactively select an entry from your bash history.
 
-This is a python clone of François Fleuret's brilliant [selector](http://www.idiap.ch/~fleuret/software.html#selector) utility.
+This is a python clone of François Fleuret's excellent [selector](http://www.idiap.ch/~fleuret/software.html#selector) utility.
 
 ```
-$ selecta.py <(history)
+$ selecta.py --bash -y <(history)
 ```
 
 ## Keys
