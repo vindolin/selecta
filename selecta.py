@@ -121,7 +121,7 @@ class Selector(object):
                 line = line.split(None, 1)[1]
 
             if remove_zsh_prefix:
-                line = re.split("\s+", line, maxsplit=4)[-1]
+                line = re.split('\s+', line, maxsplit=4)[-1]
 
             if 'selecta <(history)' not in line:
                 if remove_duplicates:
@@ -206,9 +206,10 @@ class Selector(object):
             if self.case_modifier:
                 flags ^= re.IGNORECASE
 
+            re_search = re.compile(pattern, flags).search
             items = []
             for item in self.list_items:
-                match = re.search(pattern, item, flags)
+                match = re_search(item)
                 if match:
                     items.append(ItemWidget(item.strip(), match=match.group(), show_hits=self.show_hits))
 
