@@ -29,7 +29,7 @@ Add this to your .bashrc to bind the command to ALT+e:
 
 ::
 
-    bind '"\C-[e":"\C-a\C-kselecta <(history)\C-m"'
+    bind '"\C-[e":"\C-a\C-kselecta --bash -y <(history)\C-m"'
 
 
 --help output
