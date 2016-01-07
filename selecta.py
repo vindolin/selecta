@@ -27,6 +27,7 @@ palette = [
     ('body', '', '', '', '#ddd', '#000'),
     ('focus', '', '', '', '#000', '#da0'),
     ('input', '', '', '', '#fff', '#618'),
+    ('empty_list', '', '', '', '#ddd', '#b00'),
     ('pattern', '', '', '', '#f91', ''),
     ('pattern_focus', '', '', '', 'bold,#a00', '#da0'),
     ('line','', '', '', '', ''),
@@ -212,7 +213,12 @@ class Selector(object):
                 match = re.search(pattern, item, flags)
                 if match:
                     items.append(ItemWidget(item.strip(), match=match.group(), show_hits=self.show_hits))
-            self.item_list[:] = items
+
+            if len(items) > 0:
+                self.item_list[:] = items
+            else:
+                self.item_list[:] = [urwid.Text(('empty_list', 'No selection'))]
+
 
         try:
             self.item_list.set_focus(0)
