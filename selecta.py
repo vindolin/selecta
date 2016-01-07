@@ -165,7 +165,7 @@ class Selector(object):
         self.loop.run()
 
     def list_resize(self, height):
-        self.line_count_display.set_text('{}/{} '.format(len(self.list_item_widgets), height))
+        self.line_count_display.set_text('{}/{} '.format(height, len(self.list_items)))
 
     def meep(self, *args):
         logger.info(args)
