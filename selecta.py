@@ -298,6 +298,10 @@ def main():
     parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), default=sys.stdin, help='the file which lines you want to select eg. <(history)')
     args = parser.parse_args()
 
+    if args.infile.name == '<stdin>':
+        parser.print_help()
+        exit('\nYou must provide an infile!')
+
     if args.bash:
         args.revert_order = True
         args.remove_bash_prefix = True
