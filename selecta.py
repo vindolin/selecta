@@ -131,7 +131,7 @@ class Selector(object):
         urwid.connect_signal(self.search_edit, 'change', self.edit_change)
 
         header = urwid.AttrMap(urwid.Columns([  # TODO do I really need columns?
-            (8, self.line_count_display), # TODO pack at runtime?
+            (8, self.line_count_display), # TODO pack at runtime (lines get wrapped)?
             urwid.AttrMap(self.search_edit, 'input', 'input'),  # TODO pack at runtime?
             self.modifier_display,
         ]), 'head', 'head')
