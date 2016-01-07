@@ -4,6 +4,12 @@ selecta - Interactively select an entry from your bash/zsh history.
 This is a python3 clone of François Fleuret's excellent `selector
 <http://www.idiap.ch/~fleuret/software.html#selector/>`_ tool.
 
+.. image:: https://raw.githubusercontent.com/vindolin/selecta/master/screencast.gif
+   :width: 749
+   :alt: Screencast
+   :target: https://raw.githubusercontent.com/vindolin/selecta/master/screencast.gif
+
+
 Usage
 -----
 
