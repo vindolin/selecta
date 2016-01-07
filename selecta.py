@@ -283,7 +283,7 @@ class Selector(object):
         termios.tcsetattr(fd, termios.TCSANOW, old)
 
 
-if __name__ == '__main__':
+def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--revert-order', action='store_true', default=False, help='revert the order of the lines')
@@ -319,3 +319,7 @@ if __name__ == '__main__':
         infile=args.infile,
         # TODO support missing options
     )
+
+
+if __name__ == '__main__':
+    main()
