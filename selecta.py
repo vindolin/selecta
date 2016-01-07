@@ -121,9 +121,7 @@ class Selector(object):
                 line = line.split(None, 1)[1]
 
             if remove_zsh_prefix:
-                if not line.startswith(':'):  # TODO handle multiline commands
-                    continue
-                line = line.split(';', maxsplit=1)[1]
+                line = re.split("\s+", line, maxsplit=4)[-1]
 
             if 'selecta <(history)' not in line:
                 if remove_duplicates:
