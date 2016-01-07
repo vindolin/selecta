@@ -22,16 +22,6 @@ Add this to your .bashrc to bind the command to ALT+e:
 bind '"\C-[e":"\C-a\C-kselecta <(history)\C-m"'
 """
 
-list_items = []
-
-for line in fileinput.input():
-    line = line.split(None, 1)[1]
-    if 'selecta <(history)' not in line:
-        list_items.append(line.strip())
-list_items.reverse()
-
-line_count_total = 0
-
 palette = [
     ('head', '', '', '', '#aaa', '#618'),
     ('body', '', '', '', '#ddd', '#000'),
@@ -47,10 +37,9 @@ signal.signal(signal.SIGINT, lambda *_: sys.exit(0))  # die with style
 
 
 class ItemWidget(urwid.WidgetWrap):
-    def __init__(self, list_item, match=None):
+    def __init__(self, list_item, show_hits, match=None):
         self.list_item = list_item
-
-        if match is not None:
+        if match is not None and show_hits is True:
             parts = self.list_item.partition(match)
             text = urwid.AttrMap(
                 urwid.Text(
@@ -117,7 +106,34 @@ class LineCountWidget(urwid.Text):
 
 
 class Selector(object):
-    def __init__(self):
+    def __init__(self, revert_order, remove_bash_prefix, remove_zsh_prefix, regexp, case_sensitive,
+                 remove_duplicates, show_hits, infile):
+
+        self.show_hits = show_hits
+        self.regexp_modifier = regexp
+        self.case_modifier = case_sensitive
+
+        self.list_items = []
+
+        for line in infile:
+            if remove_bash_prefix:
+                line = line.split(None, 1)[1]
+
+            if remove_zsh_prefix:
+                if not line.startswith(':'):  # TODO handle multiline commands
+                    continue
+                line = line.split(';', maxsplit=1)[1]
+
+            if 'selecta <(history)' not in line:
+                if remove_duplicates:
+                    if line not in self.list_items:
+                        self.list_items.append(line)
+                else:
+                    self.list_items.append(line)
+
+        if revert_order:
+            self.list_items.reverse()
+
         self.list_item_widgets = []
 
         self.line_count_display = LineCountWidget('')
@@ -142,9 +158,6 @@ class Selector(object):
         urwid.connect_signal(self.listbox, 'resize', self.list_resize)
 
         self.view = urwid.Frame(body=self.listbox, header=header)
-
-        self.regexp_modifier = False
-        self.case_modifier = False
 
         self.loop = urwid.MainLoop(self.view, palette, unhandled_input=self.on_unhandled_input)
         self.loop.screen.set_terminal_properties(colors=256)
@@ -181,7 +194,7 @@ class Selector(object):
 
     def update_list(self, search_text):
         if search_text == '':  # show whole list_items
-            self.item_list[:] = [ItemWidget(item.strip()) for item in list_items]
+            self.item_list[:] = [ItemWidget(item.strip(), show_hits=self.show_hits) for item in self.list_items]
 
         else:
             pattern = '{}'.format(search_text)
@@ -195,10 +208,10 @@ class Selector(object):
                 flags ^= re.IGNORECASE
 
             items = []
-            for item in list_items:
+            for item in self.list_items:
                 match = re.search(pattern, item, flags)
                 if match:
-                    items.append(ItemWidget(item.strip(), match=match.group()))
+                    items.append(ItemWidget(item.strip(), match=match.group(), show_hits=self.show_hits))
             self.item_list[:] = items
 
         try:
@@ -266,4 +279,37 @@ class Selector(object):
 
 
 if __name__ == '__main__':
-    Selector()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-i', '--revert-order', action='store_true', default=False)
+    parser.add_argument('-b', '--remove-bash-prefix', action='store_true', default=False)
+    parser.add_argument('-z', '--remove-zsh-prefix', action='store_true', default=False)
+    parser.add_argument('-e', '--regexp', action='store_true', default=False)
+    parser.add_argument('-a', '--case-sensitive', action='store_true', default=False)
+    parser.add_argument('-d', '--remove-duplicates', action='store_true', default=False)
+    parser.add_argument('-y', '--show-hits', action='store_true', default=False)
+    parser.add_argument('--bash', action='store_true', default=False)
+    parser.add_argument('--zsh', action='store_true', default=False)
+    parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), default=sys.stdin)
+    args = parser.parse_args()
+
+    if args.bash:
+        args.revert_order = True
+        args.remove_bash_prefix = True
+        args.remove_duplicates = True
+
+    if args.zsh:
+        args.revert_order = True
+        args.remove_zsh_prefix = True
+        args.remove_duplicates = True
+
+    Selector(
+        revert_order=args.revert_order,
+        remove_bash_prefix=args.remove_bash_prefix,
+        remove_zsh_prefix=args.remove_zsh_prefix,
+        regexp=args.regexp,
+        case_sensitive=args.case_sensitive,
+        remove_duplicates=args.remove_duplicates,
+        show_hits=args.show_hits,
+        infile=args.infile,
+    )
