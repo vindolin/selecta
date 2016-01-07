@@ -1,7 +1,8 @@
 selecta - Interactively select an entry from your bash/zsh history.
 -------------------------------------------------------------------
 
-This is a python clone of François Fleuret's excellent [selector](http://www.idiap.ch/~fleuret/software.html#selector) utility.
+This is a python clone of François Fleuret's excellent `selector
+<http://www.idiap.ch/~fleuret/software.html#selector/>`_
 
 Usage
 -----
