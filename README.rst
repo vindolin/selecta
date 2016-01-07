@@ -43,16 +43,20 @@ Add this to your .bashrc to bind the command to ALT+e:
                    [infile]
 
     positional arguments:
-      infile
+      infile                the file which lines you want to select eg. <(history)
 
     optional arguments:
       -h, --help            show this help message and exit
-      -i, --revert-order
+      -i, --revert-order    revert the order of the lines
       -b, --remove-bash-prefix
+                            remove the numeric prefix from bash history
       -z, --remove-zsh-prefix
-      -e, --regexp
-      -a, --case-sensitive
+                            remove the time prefix from zsh history
+      -e, --regexp          start in regexp mode
+      -a, --case-sensitive  start in case-sensitive mode
       -d, --remove-duplicates
-      -y, --show-hits
-      --bash
-      --zsh
+                            remove duplicated lines
+      -y, --show-hits       highlight the part of each line which match the
+                            substrings or regexp
+      --bash                standard for bash history search, same as -b -i -d
+      --zsh                 standard for zsh history search, same as -b -i -d
