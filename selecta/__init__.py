@@ -10,18 +10,6 @@ import re
 import os
 import fileinput
 
-
-"""Installation:
-test with:
-$ python3 selecta.py <(history)
-
-create a symlink:
-$ sudo ln -s selecta.py /usr/bin/selecta
-
-Add this to your .bashrc to bind the command to ALT+e:
-bind '"\C-[e":"\C-a\C-kselecta <(history)\C-m"'
-"""
-
 palette = [
     ('head', '', '', '', '#aaa', '#618'),
     ('body', '', '', '', '#ddd', '#000'),
@@ -206,18 +194,21 @@ class Selector(object):
             if self.case_modifier:
                 flags ^= re.IGNORECASE
 
-            re_search = re.compile(pattern, flags).search
-            items = []
-            for item in self.list_items:
-                match = re_search(item)
-                if match:
-                    items.append(ItemWidget(item.strip(), match=match.group(), show_hits=self.show_hits))
 
-            if len(items) > 0:
-                self.item_list[:] = items
-            else:
-                self.item_list[:] = [urwid.Text(('empty_list', 'No selection'))]
+            try:
+                re_search = re.compile(pattern, flags).search
+                items = []
+                for item in self.list_items:
+                    match = re_search(item)
+                    if match:
+                        items.append(ItemWidget(item.strip(), match=match.group(), show_hits=self.show_hits))
 
+                if len(items) > 0:
+                    self.item_list[:] = items
+                else:
+                    self.item_list[:] = [urwid.Text(('empty_list', 'No selection'))]
+            except re.error as err:
+                self.item_list[:] = [urwid.Text(('empty_list', 'Error in regular epression: {}'.format(err)))]
 
         try:
             self.item_list.set_focus(0)

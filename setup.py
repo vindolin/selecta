@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='selecta',
-    version='0.0.7',
+    version='0.0.8',
     author='Thomas Schüßler',
     author_email='vindolin@gmail.com',
     packages=['selecta'],
