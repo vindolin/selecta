@@ -9,7 +9,7 @@ Usage
 
 ::
 
-    $ selecta.py --bash -y <(history)
+    $ selecta --bash -y <(history)
 
 Keys
 ----
@@ -25,7 +25,7 @@ create a symlink:
 
 ::
 
-    $ sudo ln -s selecta.py /usr/bin/selecta
+    $ sudo ln -s selecta /usr/bin/selecta
 
 Add this to your .bashrc to bind the command to ALT+e:
 

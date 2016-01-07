@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='selecta',
-    version='0.0.4',
+    version='0.0.6',
     author='Thomas Schüßler',
     author_email='vindolin@gmail.com',
     packages=['selecta'],
@@ -11,7 +11,7 @@ setup(
     url='https://github.com/vindolin/selecta',
     license='MIT',
     description='Interactively select an entry from your bash/zsh history.',
-    long_description=open('README.md').read(),
+    long_description=open('README.rst').read(),
     install_requires=['urwid'],
     include_package_data=True,
 )
