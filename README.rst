@@ -21,11 +21,9 @@ CTRL+r: toggle REGEX search
 Installation
 ------------
 
-create a symlink:
-
 ::
 
-    $ sudo ln -s selecta /usr/bin/selecta
+    $ sudo pip3 install selecta
 
 Add this to your .bashrc to bind the command to ALT+e:
 
