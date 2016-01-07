@@ -18,5 +18,6 @@ setup(
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console :: Curses',
+        'Programming Language :: Python :: 3',
     ],
 )
