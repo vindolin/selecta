@@ -83,13 +83,13 @@ class ResultList(urwid.ListBox):
     signals = ['resize']
 
     def __init__(self, *args):
-        self.last_size = 0
+        self.last_size = None
         urwid.ListBox.__init__(self, *args)
 
     def render(self, size, focus):
         if size != self.last_size:
             self.last_size = size
-            urwid.emit_signal(self, 'resize', size[1])
+            urwid.emit_signal(self, 'resize', size)
         return urwid.ListBox.render(self, size, focus)
 
 
@@ -152,14 +152,15 @@ class Selector(object):
         self.loop = urwid.MainLoop(self.view, palette, unhandled_input=self.on_unhandled_input)
         self.loop.screen.set_terminal_properties(colors=256)
 
-        self.update_list('')
+        self.line_count_display.set_text('{}/{}'.format(self.listbox.last_size, len(self.list_items)))
+
+        # TODO hack!, without this list_resize does not get called at first resize event
+        self.loop.set_alarm_in(0.01, lambda *loop: self.update_list(''))
+
         self.loop.run()
 
-    def list_resize(self, height):
-        self.line_count_display.set_text('{}/{}'.format(height, len(self.list_items)))
-
-    def meep(self, *args):
-        logger.info(args)
+    def list_resize(self, size):
+        self.line_count_display.set_text('{}/{}'.format(size[1], len(self.list_items)))
 
     def toggle_case_modifier(self):
         self.case_modifier = not self.case_modifier
@@ -180,7 +181,6 @@ class Selector(object):
             self.modifier_display.set_text('[{}]'.format(','.join(modifiers)))
         else:
             self.modifier_display.set_text('')
-
 
     def update_list(self, search_text):
         if search_text == '':  # show whole list_items
