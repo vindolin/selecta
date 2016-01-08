@@ -10,6 +10,9 @@ import re
 import os
 import fileinput
 
+if (sys.version_info < (3, 0)):
+    exit('Sorry, you need Python 3 to run this!')
+
 palette = [
     ('head', '', '', '', '#aaa', '#618'),
     ('body', '', '', '', '#ddd', '#000'),
