@@ -133,11 +133,11 @@ class Selector(object):
         urwid.connect_signal(self.search_edit, 'toggle_regexp_modifier', self.toggle_regexp_modifier)
         urwid.connect_signal(self.search_edit, 'change', self.edit_change)
 
-        header = urwid.AttrMap(urwid.Columns([  # TODO do I really need columns?
-            (8, self.line_count_display), # TODO pack at runtime (lines get wrapped)?
-            urwid.AttrMap(self.search_edit, 'input', 'input'),  # TODO pack at runtime?
+        header = urwid.AttrMap(urwid.Columns([
+            ('pack', self.line_count_display),
+            urwid.AttrMap(self.search_edit, 'input', 'input'),
             self.modifier_display,
-        ]), 'head', 'head')
+        ], dividechars=1, focus_column=1), 'head', 'head')
 
         self.item_list = urwid.SimpleListWalker(self.list_item_widgets)
         self.listbox = ResultList(self.item_list)
@@ -153,7 +153,7 @@ class Selector(object):
         self.loop.run()
 
     def list_resize(self, height):
-        self.line_count_display.set_text('{}/{} '.format(height, len(self.list_items)))
+        self.line_count_display.set_text('{}/{}'.format(height, len(self.list_items)))
 
     def meep(self, *args):
         logger.info(args)
