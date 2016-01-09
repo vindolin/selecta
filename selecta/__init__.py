@@ -4,11 +4,9 @@ import termios
 import sys
 import struct
 import urwid
-import subprocess
 import signal
 import re
 import os
-import fileinput
 
 if (sys.version_info < (3, 0)):
     exit('Sorry, you need Python 3 to run this!')
@@ -21,8 +19,8 @@ palette = [
     ('empty_list', '', '', '', '#ddd', '#b00'),
     ('pattern', '', '', '', '#f91', ''),
     ('pattern_focus', '', '', '', 'bold,#a00', '#da0'),
-    ('line','', '', '', '', ''),
-    ('line_focus','', '', '', '#000', '#da0'),
+    ('line', '', '', '', '', ''),
+    ('line_focus', '', '', '', '#000', '#da0'),
 ]
 
 signal.signal(signal.SIGINT, lambda *_: sys.exit(0))  # die with style
@@ -34,12 +32,14 @@ class ItemWidget(urwid.WidgetWrap):
         if match is not None and show_hits is True:
             parts = self.list_item.partition(match)
             text = urwid.AttrMap(
-                urwid.Text(
-                    [parts[0],
+                urwid.Text([
+                    parts[0],
                     ('pattern', parts[1]),
                     parts[2]
-                ]
-            ), 'line', {'pattern': 'pattern_focus', None: 'line_focus'})
+                ]),
+                'line',
+                {'pattern': 'pattern_focus', None: 'line_focus'}
+            )
         else:
             text = urwid.AttrMap(urwid.Text(self.list_item), 'line', 'line_focus')
 
@@ -94,7 +94,18 @@ class ResultList(urwid.ListBox):
 
 
 class LineCountWidget(urwid.Text):
-    pass
+    def update(self, relevant_lines=None, visible_lines=None):
+        if not hasattr(self, 'relevant_lines'):
+            self.relevant_lines = 0
+            self.visible_lines = 0
+
+        if relevant_lines is not None:
+            self.relevant_lines = relevant_lines
+
+        if visible_lines is not None:
+            self.visible_lines = visible_lines
+
+        self.set_text('{}/{}'.format(self.visible_lines, self.relevant_lines))
 
 
 class Selector(object):
@@ -137,10 +148,10 @@ class Selector(object):
         urwid.connect_signal(self.search_edit, 'change', self.edit_change)
 
         header = urwid.AttrMap(urwid.Columns([
-            ('pack', self.line_count_display),
             urwid.AttrMap(self.search_edit, 'input', 'input'),
             self.modifier_display,
-        ], dividechars=1, focus_column=1), 'head', 'head')
+            ('pack', self.line_count_display),
+        ], dividechars=1, focus_column=0), 'head', 'head')
 
         self.item_list = urwid.SimpleListWalker(self.list_item_widgets)
         self.listbox = ResultList(self.item_list)
@@ -152,15 +163,15 @@ class Selector(object):
         self.loop = urwid.MainLoop(self.view, palette, unhandled_input=self.on_unhandled_input)
         self.loop.screen.set_terminal_properties(colors=256)
 
-        self.line_count_display.set_text('{}/{}'.format(self.listbox.last_size, len(self.list_items)))
+        self.line_count_display.update(self.listbox.last_size, len(self.item_list))
 
-        # TODO hack!, without this list_resize does not get called at first resize event
+        # TODO ahworkaround, without this update_list has no effect
         self.loop.set_alarm_in(0.01, lambda *loop: self.update_list(''))
 
         self.loop.run()
 
     def list_resize(self, size):
-        self.line_count_display.set_text('{}/{}'.format(size[1], len(self.list_items)))
+        self.line_count_display.update(visible_lines=size[1])
 
     def toggle_case_modifier(self):
         self.case_modifier = not self.case_modifier
@@ -169,6 +180,9 @@ class Selector(object):
     def toggle_regexp_modifier(self):
         self.regexp_modifier = not self.regexp_modifier
         self.update_modifiers()
+
+    def update_line_count_display(self):
+        pass
 
     def update_modifiers(self):
         modifiers = []
@@ -185,7 +199,7 @@ class Selector(object):
     def update_list(self, search_text):
         if search_text == '':  # show whole list_items
             self.item_list[:] = [ItemWidget(item.strip(), show_hits=self.show_hits) for item in self.list_items]
-
+            self.line_count_display.update(len(self.item_list))
         else:
             pattern = '{}'.format(search_text)
 
@@ -197,7 +211,6 @@ class Selector(object):
             if self.case_modifier:
                 flags ^= re.IGNORECASE
 
-
             try:
                 re_search = re.compile(pattern, flags).search
                 items = []
@@ -208,10 +221,14 @@ class Selector(object):
 
                 if len(items) > 0:
                     self.item_list[:] = items
+                    self.line_count_display.update(relevant_lines=len(self.item_list))
                 else:
                     self.item_list[:] = [urwid.Text(('empty_list', 'No selection'))]
+                    self.line_count_display.update(relevant_lines=0)
+
             except re.error as err:
                 self.item_list[:] = [urwid.Text(('empty_list', 'Error in regular epression: {}'.format(err)))]
+                self.line_count_display.update(relevant_lines=0)
 
         try:
             self.item_list.set_focus(0)

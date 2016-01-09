@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='selecta',
-    version='0.0.12',
+    version='0.0.13',
     author='Thomas Schüßler',
     author_email='vindolin@gmail.com',
     packages=['selecta'],
@@ -14,7 +14,7 @@ setup(
     long_description=open('README.rst').read(),
     install_requires=['urwid >= 1.3.1'],
     include_package_data=True,
-    keywords = ['bash', 'zsh', 'curses', 'history'],
+    keywords=['bash', 'zsh', 'curses', 'history'],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console :: Curses',
