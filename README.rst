@@ -31,7 +31,13 @@ Installation
 
     $ sudo pip3 install selecta
 
-Add this to your .bashrc to bind the command to ALT+r:
+Install the keyboard shortcut ALT+r:
+
+::
+
+    $ selecta_install_bash
+
+This will append the following line to your ~/.bashrc:
 
 ::
 
