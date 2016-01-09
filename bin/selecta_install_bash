@@ -1,0 +1,16 @@
+#!/usr/bin/env python3
+
+import os
+
+command = """bind '"\C-[r":"\C-a\C-kselecta --bash -y <(history)\C-m"'"""
+already_there = False
+
+with open(os.path.join(os.path.expanduser("~"), '.bashrc'), 'r') as f:
+    for line in f:
+        if command in line:
+            already_there = True
+            break
+
+if not already_there:
+    with open(os.path.join(os.path.expanduser("~"), '.bashrc'), 'a+') as f:
+        f.write('\n{}\n'.format(command))
