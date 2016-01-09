@@ -165,7 +165,7 @@ class Selector(object):
 
         self.line_count_display.update(self.listbox.last_size, len(self.item_list))
 
-        # TODO ahworkaround, without this update_list has no effect
+        # TODO workaround, when update_list is called directly, the linecount widget gets not updated
         self.loop.set_alarm_in(0.01, lambda *loop: self.update_list(''))
 
         self.loop.run()
@@ -180,9 +180,6 @@ class Selector(object):
     def toggle_regexp_modifier(self):
         self.regexp_modifier = not self.regexp_modifier
         self.update_modifiers()
-
-    def update_line_count_display(self):
-        pass
 
     def update_modifiers(self):
         modifiers = []
@@ -307,6 +304,7 @@ def main():
     parser.add_argument('--bash', action='store_true', default=False, help='standard for bash history search, same as -b -i -d')
     parser.add_argument('--zsh', action='store_true', default=False, help='standard for zsh history search, same as -b -i -d')
     parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), default=sys.stdin, help='the file which lines you want to select eg. <(history)')
+
     args = parser.parse_args()
 
     if args.infile.name == '<stdin>':
