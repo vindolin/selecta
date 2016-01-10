@@ -1,4 +1,4 @@
-selecta - Interactively select an entry from your bash/zsh history.
+selecta - Interactively search and select entries from your bash/zsh history.
 -------------------------------------------------------------------
 
 This is a Python3 clone of François Fleuret's excellent `selector
@@ -70,3 +70,10 @@ This will append the following line to your ~/.bashrc:
                             substrings or regexp
       --bash                standard for bash history search, same as -b -i -d
       --zsh                 standard for zsh history search, same as -b -i -d
+
+TODO
+-------
+
+| Add the cd feature from selector.
+| Implement missing command line switches.
+| Add missing keyboard shortcuts
