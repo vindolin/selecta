@@ -74,6 +74,6 @@ This will append the following line to your ~/.bashrc:
 TODO
 -------
 
-| Add the cd feature from selector.
-| Implement missing command line switches.
-| Add missing keyboard shortcuts
+* Add the cd feature from selector.
+* Implement missing command line switches.
+* Add missing keyboard shortcuts
