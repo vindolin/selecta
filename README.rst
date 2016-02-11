@@ -1,5 +1,5 @@
 selecta - Interactively search and select entries from your bash/zsh history.
--------------------------------------------------------------------
+-----------------------------------------------------------------------------
 
 This is a Python3 clone of François Fleuret's excellent `selector
 <http://www.idiap.ch/~fleuret/software.html#selector/>`_ tool.
@@ -72,7 +72,7 @@ This will append the following line to your ~/.bashrc:
       --zsh                 standard for zsh history search, same as -b -i -d
 
 TODO
--------
+----
 
 * Add the cd feature from selector.
 * Implement missing command line switches.
