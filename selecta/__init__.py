@@ -118,7 +118,12 @@ class Selector(object):
 
         self.list_items = []
 
-        for line in infile:
+        if revert_order:
+            lines = reversed(infile.readlines())
+        else:
+            lines = infile
+
+        for line in lines:
             if remove_bash_prefix:
                 line = line.split(None, 1)[1]
 
@@ -126,14 +131,8 @@ class Selector(object):
                 line = re.split('\s+', line, maxsplit=4)[-1]
 
             if 'selecta <(history)' not in line:
-                if remove_duplicates:
-                    if line not in self.list_items:
-                        self.list_items.append(line)
-                else:
+                if not remove_duplicates or line not in self.list_items:
                     self.list_items.append(line)
-
-        if revert_order:
-            self.list_items.reverse()
 
         self.list_item_widgets = []
 
