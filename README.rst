@@ -41,7 +41,7 @@ This will append the following line to your ~/.bashrc:
 
 ::
 
-    bind '"\C-[r":"\C-a\C-kselecta --bash -y <(history)\C-m"'
+    bind '"\C-[r":"\C-a\C-k selecta --bash -y <(history)\C-m"'
 
 
 --help output
