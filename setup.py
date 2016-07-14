@@ -4,7 +4,7 @@ import codecs
 
 setup(
     name='selecta',
-    version='0.0.20',
+    version='0.0.21',
     author='Thomas Schüßler',
     author_email='vindolin@gmail.com',
     packages=['selecta'],
