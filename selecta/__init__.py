@@ -29,7 +29,7 @@ signal.signal(signal.SIGINT, lambda *_: sys.exit(0))  # die with style
 class ItemWidget(urwid.WidgetWrap):
     def __init__(self, list_item, show_hits, match=None):
         self.list_item = list_item
-        if match is not None and show_hits is True:
+        if match is not None and match is not '' and show_hits is True:
             parts = self.list_item.partition(match)
             text = urwid.AttrMap(
                 urwid.Text([
