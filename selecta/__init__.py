@@ -133,14 +133,14 @@ class Selector(object):
 
         for line in lines:
             if remove_bash_prefix:
-                line = line.split(None, 1)[1]
+                line = line.split(None, 1)[1].strip()
 
             if remove_zsh_prefix:
                 line = re.split('\s+', line, maxsplit=4)[-1]
 
             if 'selecta <(history)' not in line:
                 if not remove_duplicates or line not in self.list_items:
-                    self.list_items.append(line.strip())
+                    self.list_items.append(line)
 
         self.list_item_widgets = []
 
