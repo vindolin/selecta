@@ -33,8 +33,9 @@ class ItemWidget(urwid.WidgetWrap):
 
         if match is not None and match is not '' and show_hits is True:
             # highlight the matches
+            hits = re.split('({match})'.format(match=re.escape(match)), self.list_item)
             parts = []
-            for part in re.split('({match})'.format(match=match), self.list_item):
+            for part in hits:
                 if part == match:
                     parts.append(('pattern', part))
                 else:
