@@ -30,17 +30,22 @@ signal.signal(signal.SIGINT, lambda *_: sys.exit(0))  # die with style
 class ItemWidget(urwid.WidgetWrap):
     def __init__(self, list_item, show_hits, match=None):
         self.list_item = list_item
+
         if match is not None and match is not '' and show_hits is True:
-            parts = self.list_item.partition(match)
+            # highlight the matches
+            parts = []
+            for part in re.split('({match})'.format(match=match), self.list_item):
+                if part == match:
+                    parts.append(('pattern', part))
+                else:
+                    parts.append(part)
+
             text = urwid.AttrMap(
-                urwid.Text([
-                    parts[0],
-                    ('pattern', parts[1]),
-                    parts[2]
-                ]),
+                urwid.Text(parts),
                 'line',
                 {'pattern': 'pattern_focus', None: 'line_focus'}
             )
+
         else:
             text = urwid.AttrMap(urwid.Text(self.list_item), 'line', 'line_focus')
 
@@ -232,9 +237,6 @@ class Selector(object):
             self.item_list.set_focus(0)
         except IndexError:  # no items
             pass
-
-    def highlight_pattern(self, match):
-        print(match)
 
     def edit_change(self, widget, search_text):
         self.update_list(search_text)
