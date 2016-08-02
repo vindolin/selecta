@@ -7,6 +7,7 @@ import urwid
 import signal
 import re
 import os
+from subprocess import call
 
 if (sys.version_info < (3, 0)):
     exit('Sorry, you need Python 3 to run this!')
@@ -115,6 +116,7 @@ class Selector(object):
         self.show_hits = show_hits
         self.regexp_modifier = regexp
         self.case_modifier = case_sensitive
+        self.remove_bash_prefix = remove_bash_prefix
 
         self.list_items = []
 
@@ -132,7 +134,7 @@ class Selector(object):
 
             if 'selecta <(history)' not in line:
                 if not remove_duplicates or line not in self.list_items:
-                    self.list_items.append(line)
+                    self.list_items.append(line.strip())
 
         self.list_item_widgets = []
 
@@ -194,7 +196,7 @@ class Selector(object):
 
     def update_list(self, search_text):
         if search_text == '':  # show whole list_items
-            self.item_list[:] = [ItemWidget(item.strip(), show_hits=self.show_hits) for item in self.list_items]
+            self.item_list[:] = [ItemWidget(item, show_hits=self.show_hits) for item in self.list_items]
             self.line_count_display.update(len(self.item_list))
         else:
             pattern = '{}'.format(search_text)
@@ -213,7 +215,7 @@ class Selector(object):
                 for item in self.list_items:
                     match = re_search(item)
                     if match:
-                        items.append(ItemWidget(item.strip(), match=match.group(), show_hits=self.show_hits))
+                        items.append(ItemWidget(item, match=match.group(), show_hits=self.show_hits))
 
                 if len(items) > 0:
                     self.item_list[:] = items
@@ -269,6 +271,18 @@ class Selector(object):
 
         elif input_ == 'esc':
             raise urwid.ExitMainLoop()
+
+        elif input_ == 'delete':
+            if self.remove_bash_prefix:
+                try:
+                    list_item = self.listbox.get_focus()[0].list_item
+                    self.list_items.remove(list_item)
+                    self.item_list[:] = [ItemWidget(item, show_hits=self.show_hits) for item in self.list_items]
+
+                    # TODO make this working when in bash mode
+                    call("sed -i '/^{}$/d' ~/.bash_history".format(list_item), shell=True)
+                except AttributeError:  # empty list
+                    return True
 
         elif len(input_) == 1:  # ignore things like tab, enter
             self.search_edit.set_edit_text(self.search_edit.get_text()[0] + input_)
