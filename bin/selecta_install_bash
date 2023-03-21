@@ -2,7 +2,7 @@
 
 import os
 
-command = """bind '"\C-[r":"\C-a\C-kselecta --bash -y <(history)\C-m"'"""
+command = """bind '"\C-[r":"\C-a\C-k selecta --bash -y <(history)\C-m"'"""
 already_there = False
 
 with open(os.path.join(os.path.expanduser("~"), '.bashrc'), 'r') as f:
