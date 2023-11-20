@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import fcntl
 import termios
 import sys
@@ -7,7 +6,6 @@ import urwid
 import signal
 import re
 import os
-# from subprocess import call
 
 if (sys.version_info < (3, 0)):
     exit('Sorry, you need Python 3 to run this!')
@@ -49,7 +47,7 @@ class ItemWidgetPattern(ItemWidget):
         self.line = line
 
         # highlight the matches
-        matches = re.split('({match})'.format(match=re.escape(match)), self.line)
+        matches = re.split(f'({match})', self.line)
         parts = []
         for part in matches:
             if part == match:
@@ -72,16 +70,15 @@ class ItemWidgetWords(ItemWidget):
 
         subject = line
         parts = []
+        split = []
         for search_word in search_words:
             if search_word:
                 split = subject.split(search_word, maxsplit=1)
                 subject = split[-1]
                 parts += [split[0], ('pattern', search_word)]
 
-        try:
+        if 1 in split:
             parts += split[1]
-        except IndexError:
-            pass
 
         text = urwid.AttrMap(
             urwid.Text(parts),
@@ -93,7 +90,6 @@ class ItemWidgetWords(ItemWidget):
 
 
 class SearchEdit(urwid.Edit):
-    __metaclass__ = urwid.signals.MetaSignals
     signals = ['done', 'toggle_regexp_modifier', 'toggle_case_modifier']
 
     def keypress(self, size, key):
@@ -103,7 +99,7 @@ class SearchEdit(urwid.Edit):
         elif key == 'esc':
             urwid.emit_signal(self, 'done', None)
             return
-        elif key == 'tab':
+        elif key == 'ctrl a':
             urwid.emit_signal(self, 'toggle_case_modifier')
             urwid.emit_signal(self, 'change', self, self.get_edit_text())
             return
@@ -119,7 +115,6 @@ class SearchEdit(urwid.Edit):
 
 
 class ResultList(urwid.ListBox):
-    __metaclass__ = urwid.signals.MetaSignals
     signals = ['resize']
 
     def __init__(self, *args):
@@ -164,12 +159,14 @@ class Selector(object):
         else:
             lines = infile
 
+        import re
+
         for line in lines:
             if remove_bash_prefix:
                 line = line.split(None, 1)[1].strip()
 
             if remove_zsh_prefix:
-                line = re.split('\s+', line, maxsplit=4)[-1]
+                line = re.split(r'\s+', line, maxsplit=4)[-1]
 
             if 'selecta <(history)' not in line:
                 if not remove_duplicates or line not in self.lines:
@@ -181,6 +178,8 @@ class Selector(object):
         self.search_edit = SearchEdit(edit_text='')
 
         self.modifier_display = urwid.Text('')
+
+        self.update_modifiers()
 
         urwid.connect_signal(self.search_edit, 'done', self.edit_done)
         urwid.connect_signal(self.search_edit, 'toggle_case_modifier', self.toggle_case_modifier)
@@ -233,7 +232,8 @@ class Selector(object):
         else:
             self.modifier_display.set_text('')
 
-    def update_list(self, search_text):
+    def update_list(self, search_text=''):
+        search_words = ''
         if search_text == '' or search_text == '"' or search_text == '""':  # show all lines
             self.item_list[:] = [ItemWidgetPlain(item) for item in self.lines]
             self.line_count_display.update(len(self.item_list))
@@ -308,18 +308,19 @@ class Selector(object):
             return True
 
         if input_ == 'enter':
-            try:
-                line = self.listbox.get_focus()[0].line
-            except AttributeError:  # empty list
+            focused_widget = self.listbox.get_focus()[0]
+            if focused_widget is not None:
+                line = focused_widget.line
+            else:
                 return
 
             self.view.set_header(urwid.AttrMap(
                 urwid.Text('selected: {}'.format(line)), 'head'))
 
-            self.inject_command(line)
+            self.inject_line(line)
             raise urwid.ExitMainLoop()
 
-        elif input_ == 'tab':
+        elif input_ == 'ctrl a':
             self.toggle_case_modifier()
 
         elif input_ == 'ctrl r':
@@ -352,9 +353,9 @@ class Selector(object):
 
         return True
 
-    def inject_command(self, command):
+    def inject_line(self, command):
+        """Inject the line into the terminal."""
         command = (struct.pack('B', c) for c in os.fsencode(command))
-
         fd = sys.stdin.fileno()
         old = termios.tcgetattr(fd)
         new = termios.tcgetattr(fd)
@@ -371,7 +372,7 @@ def main():
     parser.add_argument('-i', '--revert-order', action='store_true', default=False, help='revert the order of the lines')
     parser.add_argument('-b', '--remove-bash-prefix', action='store_true', default=False, help='remove the numeric prefix from bash history')
     parser.add_argument('-z', '--remove-zsh-prefix', action='store_true', default=False, help='remove the time prefix from zsh history')
-    parser.add_argument('-e', '--regexp', action='store_true', default=False, help='start in regexp mode')
+    parser.add_argument('-r', '--regexp', action='store_true', default=False, help='start in regexp mode')
     parser.add_argument('-a', '--case-sensitive', action='store_true', default=True, help='start in case-sensitive mode')
     parser.add_argument('-d', '--remove-duplicates', action='store_true', default=False, help='remove duplicated lines')
     parser.add_argument('-y', '--show-matches', action='store_true', default=False, help='highlight the part of each line which match the substrings or regexp')
@@ -402,12 +403,12 @@ def main():
         regexp=args.regexp,
         case_sensitive=args.case_sensitive,
         remove_duplicates=args.remove_duplicates,
-        show_matches=args.show_matches,  # TODO highlight more than one part
+        show_matches=args.show_matches,
         infile=args.infile,
-        # TODO support missing options
+        # TODO support missing options from the original selector
+        # TODO directory history would be sweet!
     )
 
 
 if __name__ == '__main__':
     main()
-    # version bump

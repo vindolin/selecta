@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "selecta"
+version = "0.2.0"
+authors = [
+  { name="Thomas Schüßler", email="vindolin@gmail.com" },
+]
+dependencies = [
+  "urwid <= 2.0.0",
+]
+description = "Interactively select an entry from your bash/zsh history."
+readme = "README.rst"
+requires-python = ">=3.9"
+classifiers = [
+  'Development Status :: 5 - Production/Stable',
+  'Environment :: Console :: Curses',
+  'Programming Language :: Python :: 3',
+]
+keywords = [
+  'bash', 'zsh', 'curses', 'history'
+]
+
+[project.urls]
+"Homepage" = "https://github.com/vindolin/selecta"
+
+[project.scripts]
+selecta = 'selecta:main'
+selecta_install_bash = 'selecta.commands.selecta_install_bash:main'
