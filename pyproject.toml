@@ -9,15 +9,18 @@ authors = [
   { name="Thomas Schüßler", email="vindolin@gmail.com" },
 ]
 dependencies = [
-    "urwid <= 2.0.0",
+  "urwid <= 2.0.0",
 ]
 description = "Interactively select an entry from your bash/zsh history."
 readme = "README.rst"
 requires-python = ">=3.9"
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
+  'Development Status :: 5 - Production/Stable',
+  'Environment :: Console :: Curses',
+  'Programming Language :: Python :: 3',
+]
+keywords = [
+  'bash', 'zsh', 'curses', 'history'
 ]
 
 [project.urls]
