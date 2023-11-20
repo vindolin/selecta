@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+
+import os
+
+command = r"""bind '"\C-[r":"\C-a\C-k selecta --bash -y <(history)\C-m"'"""
+already_there = False
+
+if __name__ == '__main__':
+    with open(os.path.join(os.path.expanduser("~"), '.bashrc'), 'r') as f:
+        for line in f:
+            if command in line:  # already installed
+                already_there = True
+                break
+
+    if not already_there:
+        with open(os.path.join(os.path.expanduser("~"), '.bashrc'), 'a+') as f:
+            # append hotkey binding to .bashrc
+            f.write('\n{}\n'.format(command))
