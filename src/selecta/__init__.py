@@ -264,8 +264,8 @@ class Selector(object):
                         highlight_type = HIGHLIGHT_WORDS
                         pattern = '.*'.join([re.escape(word) for word in search_words])
 
-            if self.case_modifier:
-                flags ^= re.IGNORECASE
+            if not self.case_modifier:
+                flags |= re.IGNORECASE
 
             try:
                 re_search = re.compile(pattern, flags).search
