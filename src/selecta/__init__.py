@@ -140,7 +140,7 @@ class LineCountWidget(urwid.Text):
         if visible_lines is not None:
             self.visible_lines = visible_lines
 
-        self.set_text('{}/{}'.format(self.visible_lines, self.relevant_lines))
+        self.set_text(f'{self.visible_lines}/{self.relevant_lines}')
 
 
 class Selector(object):
@@ -228,7 +228,7 @@ class Selector(object):
             modifiers.append('case')
 
         if len(modifiers) > 0:
-            self.modifier_display.set_text('[{}]'.format(','.join(modifiers)))
+            self.modifier_display.set_text(f'[{", ".join(modifiers)}]')
         else:
             self.modifier_display.set_text('')
 
@@ -289,7 +289,7 @@ class Selector(object):
                     self.line_count_display.update(relevant_lines=0)
 
             except re.error as err:
-                self.item_list[:] = [urwid.Text(('empty_list', 'Error in regular epression: {}'.format(err)))]
+                self.item_list[:] = [urwid.Text(('empty_list', f'Error in regular epression: {err}'))]
                 self.line_count_display.update(relevant_lines=0)
 
         try:
@@ -315,7 +315,7 @@ class Selector(object):
                 return
 
             self.view.set_header(urwid.AttrMap(
-                urwid.Text('selected: {}'.format(line)), 'head'))
+                urwid.Text(f'selected: {line}'), 'head'))
 
             self.inject_line(line)
             raise urwid.ExitMainLoop()
