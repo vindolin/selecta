@@ -7,6 +7,9 @@ import signal
 import re
 import os
 
+def debug(value, prefix=''):
+    open('/tmp/selecta.log', 'a').write(f'{prefix} {value}\n')
+
 if (sys.version_info < (3, 0)):
     exit('Sorry, you need Python 3 to run this!')
 
@@ -45,6 +48,7 @@ class ItemWidgetPlain(ItemWidget):
 class ItemWidgetPattern(ItemWidget):
     def __init__(self, line, match=None):
         self.line = line
+        debug(line)
 
         # highlight the matches
         matches = re.split(f'({match})', self.line)
@@ -64,13 +68,14 @@ class ItemWidgetPattern(ItemWidget):
         super().__init__(text)
 
 
-class ItemWidgetWords(ItemWidget):
+class _ItemWidgetWords(ItemWidget):
     def __init__(self, line, search_words):
         self.line = line
 
         subject = line
         parts = []
         split = []
+
         for search_word in search_words:
             if search_word:
                 split = subject.split(search_word, maxsplit=1)
@@ -80,6 +85,7 @@ class ItemWidgetWords(ItemWidget):
         if 1 in split:
             parts += split[1]
 
+        debug(parts)
         text = urwid.AttrMap(
             urwid.Text(parts),
             'line',
@@ -88,6 +94,29 @@ class ItemWidgetWords(ItemWidget):
 
         super().__init__(text)
 
+
+class ItemWidgetWords(ItemWidget):
+    def __init__(self, line, search_words):
+        debug(search_words)
+        search_words = sorted(search_words, key=len, reverse=True)  # Sort search_words by length
+        set(search_words)
+
+        subject = line
+        split = ItemWidgetWords.split_words(search_words, subject)
+
+        parts = [('pattern', word) if word in search_words else word for word in split]
+
+        text = urwid.AttrMap(
+            urwid.Text(parts),
+            'line',
+            {'pattern': 'pattern_focus', None: 'line_focus'}
+        )
+
+        super().__init__(text)
+
+    @staticmethod
+    def split_words(words, subject):
+        return [item for item in re.split(rf"({'|'.join(words)})", subject) if item]
 
 class SearchEdit(urwid.Edit):
     signals = ['done', 'toggle_regexp_modifier', 'toggle_case_modifier']
@@ -159,11 +188,10 @@ class Selector(object):
         else:
             lines = infile
 
-        import re
-
         for line in lines:
+            line = line.strip()
             if remove_bash_prefix:
-                line = line.split(None, 1)[1].strip()
+                line = line.split(None, 1)[1]
 
             if remove_zsh_prefix:
                 line = re.split(r'\s+', line, maxsplit=4)[-1]
@@ -232,70 +260,67 @@ class Selector(object):
         else:
             self.modifier_display.set_text('')
 
-    def update_list(self, search_text=''):
-        search_words = ''
-        if search_text == '' or search_text == '"' or search_text == '""':  # show all lines
-            self.item_list[:] = [ItemWidgetPlain(item) for item in self.lines]
-            self.line_count_display.update(len(self.item_list))
-        else:
-            pattern = ''
+    def update_using_regexp(self, pattern):
 
-            flags = re.UNICODE
-
-            highlight_type = None
-
-            # search string is a regular expression
-            if self.regexp_modifier:
-                highlight_type = HIGHLIGHT_REGEX
-                pattern = search_text
-            else:
-                if search_text.startswith('"'):
-                    # search for whole string between quotation marks
-                    highlight_type = HIGHLIGHT_WHOLE_STRING
-                    pattern = re.escape(search_text.strip('"'))
-                else:
-                    # default - split all words and convert to regular expression like: word1.*word2.*word3
-                    subpatterns = search_text.split(' ')
-                    if len(subpatterns) == 1:
-                        search_words = pattern = search_text
-                        pattern = re.escape(pattern)
-                    else:
-                        search_words = search_text.split(' ')
-                        highlight_type = HIGHLIGHT_WORDS
-                        pattern = '.*'.join([re.escape(word) for word in search_words])
-
-            if not self.case_modifier:
-                flags |= re.IGNORECASE
-
-            try:
-                re_search = re.compile(pattern, flags).search
-                items = []
-                for item in self.lines:
-                    match = re_search(item)
-                    if match:
-                        if self.show_matches:
-                            if highlight_type == HIGHLIGHT_WORDS:
-                                items.append(ItemWidgetWords(item, search_words=search_words))
-                            else:
-                                items.append(ItemWidgetPattern(item, match=match.group()))
-                        else:
-                            items.append(ItemWidgetPlain(item))
-
-                if len(items) > 0:
-                    self.item_list[:] = items
-                    self.line_count_display.update(relevant_lines=len(self.item_list))
-                else:
-                    self.item_list[:] = [urwid.Text(('empty_list', 'No selection'))]
-                    self.line_count_display.update(relevant_lines=0)
-
-            except re.error as err:
-                self.item_list[:] = [urwid.Text(('empty_list', f'Error in regular epression: {err}'))]
-                self.line_count_display.update(relevant_lines=0)
+        flags = re.UNICODE
+        if not self.case_modifier:
+            flags |= re.IGNORECASE
 
         try:
-            self.item_list.set_focus(0)
-        except IndexError:  # no items
-            pass
+            re_search = re.compile(pattern, flags).search
+
+            items = []
+            for line in self.lines:
+                match = re_search(line)
+                if match:
+                    if self.show_matches:
+                        items.append(ItemWidgetPattern(line, match=match.group()))
+                    else:
+                        items.append(ItemWidgetPlain(line))
+
+            if len(items) > 0:
+                self.item_list[:] = items
+                self.line_count_display.update(relevant_lines=len(self.item_list))
+            else:
+                self.item_list[:] = [urwid.Text(('empty_list', '- empty result -'))]
+                self.line_count_display.update(relevant_lines=0)
+
+        except re.error as err:
+            self.item_list[:] = [urwid.Text(('empty_list', f'Error in regular epression: {err}'))]
+            self.line_count_display.update(relevant_lines=0)
+
+    def check_all_words(self, subject, words):
+        return all(word in subject for word in words)
+
+
+    def update_list(self, search_text=''):
+        # show all lines if search_text is empty
+        if search_text == '' or search_text == '"' or search_text == '""':
+            self.item_list[:] = [ItemWidgetPlain(line) for line in self.lines]
+            self.line_count_display.update(len(self.item_list))
+
+        # search for whole string if search_text begins with quotation mark
+        elif search_text.startswith('"'):
+            self.item_list[:] = [ItemWidgetPlain(item) for item in self.lines if search_text.lstrip('"') in item]
+
+        elif self.regexp_modifier:
+            self.update_using_regexp(search_text)
+
+        # split search into words and search for each word
+        else:
+            for item in self.lines:
+                debug(item)
+                debug(search_text)
+            self.item_list[:] = [ItemWidgetPlain(line) for line in self.lines if self.check_all_words(line, search_text.split())]
+            if len(self.item_list) == 0:
+                self.item_list[:] = [urwid.Text(('empty_list', '- empty result -'))]
+        #                            items.append(ItemWidgetWords(line, search_words=search_words))
+
+
+        # try:
+        #     self.item_list.set_focus(0)
+        # except IndexError:  # no items
+        #     pass
 
     def edit_change(self, widget, search_text):
         self.update_list(search_text)
