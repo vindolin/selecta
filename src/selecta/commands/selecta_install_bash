@@ -2,7 +2,8 @@
 
 import os
 
-command = r"""bind '"\C-[r":"\C-a\C-k selecta --bash -y <(history)\C-m"'"""
+command = r"""bind -x '"\C-[r":"\selecta --bash -y <(history)"'"""
+
 already_there = False
 
 if __name__ == '__main__':
