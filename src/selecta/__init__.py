@@ -1,5 +1,3 @@
-# pylint: disable=C0321
-
 """Selecta 0.2.0"""
 
 import codecs
@@ -84,7 +82,7 @@ def mark_parts(subject_string, s_words, case_sensitive=False):
         flags |= re.IGNORECASE
 
     # split sub string at word boundaries
-    debug('|'.join(s_words))
+    # debug('|'.join(s_words))
     s_parts = ([s_word for s_word in
                 re.split(rf"({'|'.join([re.escape(word) for word in s_words])})",
                          subject_string, flags=flags) if s_word])
@@ -122,7 +120,6 @@ class ItemWidgetWords(ItemWidget):
 
     def split_words(self, words, subject):
         """Split the subject into pieces for later styling."""
-        # return [item for item in re.split(rf"({'|'.join(words)})", subject) if item]
         return [word for word in re.split(rf"({'|'.join(words)})", subject) if word]
 
 
@@ -247,8 +244,12 @@ class Selector(object):
         self.view = urwid.Frame(body=self.listbox, header=header)
 
         self.loop = urwid.MainLoop(self.view, palette, unhandled_input=self.on_unhandled_input)
-        # self.loop.screen.set_terminal_properties(colors=256)
-        self.loop.screen.set_terminal_properties(colors=2**24)
+
+        # find out what this pylint error means (happens from >=2.2.0)
+        # Cannot access member "set_terminal_properties" for type "BaseScreen" Member "set_terminal_properties" is unknown
+        # it doesn't seem to be a problem though
+        self.loop.screen.set_terminal_properties(colors=256)
+        # self.loop.screen.set_terminal_properties(colors=2**24)
 
         self.line_count_display.update(len(self.item_list))
 
@@ -286,7 +287,6 @@ class Selector(object):
             flags |= re.IGNORECASE
 
         try:
-            # debug(pattern)
             re_search = re.compile(pattern, flags).search
 
             items = []
@@ -351,14 +351,12 @@ class Selector(object):
         else:
             self.item_list[:] = self.update_with_words(search_text)
 
+        # show empty list message if no items are found
         if len(self.item_list) == 0:
             self.item_list[:] = [urwid.Text(('empty_list', '- empty result -'))]
         self.line_count_display.update(len(self.item_list))
 
-        try:
-            self.item_list.set_focus(0)
-        except IndexError:  # no items
-            pass
+        self.item_list.set_focus(0)
 
     def edit_change(self, widget, search_text):
         self.update_list(search_text)
@@ -372,10 +370,14 @@ class Selector(object):
 
         if input_ == 'enter':
             focused_widget = self.listbox.get_focus()[0]
-            if focused_widget is not None:
-                line = focused_widget.line
-            else:
+
+            if focused_widget is None:
                 return False
+
+            if isinstance(focused_widget, urwid.Text):
+                return False
+
+            line = focused_widget.line
 
             self.view.set_header(urwid.AttrMap(
                 urwid.Text(f'selected: {line}'), 'head'))
@@ -396,17 +398,6 @@ class Selector(object):
 
         elif input_ == 'esc':
             raise urwid.ExitMainLoop()
-
-        # elif input_ == 'delete':
-        #     if self.remove_bash_prefix:
-        #         try:
-        #             line = self.listbox.get_focus()[0].line
-        #             self.lines.remove(line)
-        #             self.item_list[:] = [ItemWidgetPlain(item) for item in self.lines]
-        #             # TODO make this working when in bash mode
-        #             call("sed -i '/^{}$/d' ~/.bash_history".format(line), shell=True)
-        #         except AttributeError:  # empty list
-        #             return True
 
         elif len(input_) == 1:  # ignore things like tab, enter
             self.search_edit.set_edit_text(self.search_edit.get_text()[0] + input_)
