@@ -141,6 +141,10 @@ class SearchEdit(urwid.Edit):
             urwid.emit_signal(self, 'toggle_regexp_modifier')
             urwid.emit_signal(self, 'change', self, self.get_edit_text())
             return
+        # elif key == 'ctrl d':
+        #     urwid.emit_signal(self, 'toggle_directory_modifier')
+        #     urwid.emit_signal(self, 'change', self, self.get_edit_text())
+        #     return
         elif key == 'down':
             urwid.emit_signal(self, 'done', None)
             return
@@ -186,6 +190,7 @@ class Selector(object):
         self.show_matches = show_matches
         self.regexp_modifier = regexp
         self.case_modifier = case_sensitive
+        # self.directory_modifier_modifier = False
         self.remove_bash_prefix = remove_bash_prefix
 
         self.lines = []
@@ -225,6 +230,7 @@ class Selector(object):
         urwid.connect_signal(self.search_edit, 'toggle_case_modifier', self.toggle_case_modifier)
         urwid.connect_signal(self.search_edit, 'toggle_regexp_modifier',
                              self.toggle_regexp_modifier)
+        # urwid.connect_signal(self.search_edit, 'toggle_directory_modifier', self.toggle_directory_modifier)
         urwid.connect_signal(self.search_edit, 'change', self.edit_change)
 
         header = urwid.AttrMap(urwid.Columns([
@@ -241,8 +247,8 @@ class Selector(object):
         self.view = urwid.Frame(body=self.listbox, header=header)
 
         self.loop = urwid.MainLoop(self.view, palette, unhandled_input=self.on_unhandled_input)
-        self.loop.screen.set_terminal_properties(colors=256)
-        # self.loop.screen.set_terminal_properties(colors=2**24)
+        # self.loop.screen.set_terminal_properties(colors=256)
+        self.loop.screen.set_terminal_properties(colors=2**24)
 
         self.line_count_display.update(len(self.item_list))
 
@@ -261,12 +267,19 @@ class Selector(object):
         self.regexp_modifier = not self.regexp_modifier
         self.update_modifiers()
 
+    def toggle_directory_modifier(self):
+        self.directory_modifier = not self.directory_modifier
+        self.update_modifiers()
+
     def update_modifiers(self):
         modifiers = []
         if self.regexp_modifier:
             modifiers.append('regexp')
         if self.case_modifier:
             modifiers.append('case')
+
+        # if self.directory_modifier_modifier:
+        #     modifiers.append('directory')
 
         if len(modifiers) > 0:
             self.modifier_display.set_text(f'[{", ".join(modifiers)}]')
@@ -413,14 +426,10 @@ class Selector(object):
     def inject_line(self, command):
         """Inject the line into the terminal."""
         command = (struct.pack('B', c) for c in os.fsencode(command))
+
         fd = sys.stdin.fileno()
-        old = termios.tcgetattr(fd)
-        new = termios.tcgetattr(fd)
-        new[3] = new[3] & ~termios.ECHO  # disable echo
-        termios.tcsetattr(fd, termios.TCSANOW, new)
         for c in command:
             fcntl.ioctl(fd, termios.TIOCSTI, c)
-        termios.tcsetattr(fd, termios.TCSANOW, old)
 
 
 def main():
