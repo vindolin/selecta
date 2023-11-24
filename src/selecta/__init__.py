@@ -279,7 +279,7 @@ class Selector(object):
             flags |= re.IGNORECASE
 
         try:
-            debug(pattern)
+            # debug(pattern)
             re_search = re.compile(pattern, flags).search
 
             items = []
@@ -440,7 +440,7 @@ def main():
 
     args = parser.parse_args()
 
-    debug('\033[2J')
+    # debug('\033[2J')
 
     if args.infile.name == '<stdin>':
         parser.print_help()
