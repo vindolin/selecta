@@ -1,20 +1,29 @@
+# pylint: disable=C0321
+
+"""Selecta 0.2.0"""
+
+import codecs
 import fcntl
-import termios
-import sys
-import struct
-import urwid
-import signal
-import re
 import os
+import re
+import signal
+import struct
+import sys
+import termios
+import urwid
+
 
 def debug(value, prefix=''):
-    open('/tmp/selecta.log', 'a').write(f'{prefix} {value}\n')
+    """only usded when debugging"""
+    with codecs.open('/tmp/selecta.log', 'a', encoding='utf-8') as file:
+        file.write(f'{prefix} {value}\n')
 
-if (sys.version_info < (3, 0)):
-    exit('Sorry, you need Python 3 to run this!')
+
+if sys.version_info < (3, 0):
+    sys.exit('Sorry, you need Python 3 to run this!')
 
 palette = [
-    ('head', '', '', '', '#000', '#618'),
+    ('head', '', '', '', '#bbb', '#618'),
     ('body', '', '', '', '#ddd', '#000'),
     ('focus', '', '', '', '#000', '#da0'),
     ('input', '', '', '', '#fff', '#618'),
@@ -27,18 +36,18 @@ palette = [
 
 signal.signal(signal.SIGINT, lambda *_: sys.exit(0))  # die with style
 
-HIGHLIGHT_NONE, HIGHLIGHT_WHOLE_STRING, HIGHLIGHT_WORDS, HIGHLIGHT_REGEX = range(4)
-
 
 class ItemWidget(urwid.WidgetWrap):
+    """Base for a widget for a single line in the listbox."""
     def selectable(self):
         return True
 
-    def keypress(self, size, key):
+    def keypress(self, _, key):
         return key
 
 
 class ItemWidgetPlain(ItemWidget):
+    """Widget that displays a line as is."""
     def __init__(self, line):
         self.line = line
         text = urwid.AttrMap(urwid.Text(self.line), 'line', 'line_focus')
@@ -46,18 +55,14 @@ class ItemWidgetPlain(ItemWidget):
 
 
 class ItemWidgetPattern(ItemWidget):
-    def __init__(self, line, match=None):
+    """Widget that highlights the matching part of a line."""
+    def __init__(self, line, match):
         self.line = line
-        debug(line)
 
         # highlight the matches
-        matches = re.split(f'({match})', self.line)
-        parts = []
-        for part in matches:
-            if part == match:
-                parts.append(('pattern', part))
-            else:
-                parts.append(part)
+        matches = re.split(f'({re.escape(match)})', self.line)
+
+        parts = [('pattern', part) if part == match else part for part in matches]
 
         text = urwid.AttrMap(
             urwid.Text(parts),
@@ -68,57 +73,56 @@ class ItemWidgetPattern(ItemWidget):
         super().__init__(text)
 
 
-class _ItemWidgetWords(ItemWidget):
-    def __init__(self, line, search_words):
-        self.line = line
+def mark_parts(subject_string, s_words, case_sensitive=False):
+    def wrap_part(part):
+        return ('pattern', part)
 
-        subject = line
-        parts = []
-        split = []
+    # set re flags
+    flags = 0
+    if not case_sensitive:
+        flags |= re.IGNORECASE
 
-        for search_word in search_words:
-            if search_word:
-                split = subject.split(search_word, maxsplit=1)
-                subject = split[-1]
-                parts += [split[0], ('pattern', search_word)]
+    # split sub string at word boundaries
+    s_parts = [s_word for s_word in re.split(rf"({'|'.join(s_words)})", subject_string, flags=flags) if s_word]
 
-        if 1 in split:
-            parts += split[1]
+    # create list of search words as lookup list,
+    s_words_x = s_words if case_sensitive else [s_word.lower() for s_word in s_words]
 
-        debug(parts)
-        text = urwid.AttrMap(
-            urwid.Text(parts),
-            'line',
-            {'pattern': 'pattern_focus', None: 'line_focus'}
-        )
+    # generate list of the word parts and mark the search words
+    if False:
+        # use regular for loop
+        l_parts = []
+        for word in s_parts:
+            word_x = word if case_sensitive else word.lower()
+            l_parts.append(wrap_part(word) if word_x in s_words_x else word)
+    else:
+        # use faster(?) list comprehension
+        l_parts = [wrap_part(word) if (word if case_sensitive else word.lower()) in s_words_x else word
+                   for word in s_parts]
 
-        super().__init__(text)
+    return l_parts
 
 
 class ItemWidgetWords(ItemWidget):
-    def __init__(self, line, search_words):
-        debug(search_words)
-        search_words = sorted(search_words, key=len, reverse=True)  # Sort search_words by length
-        set(search_words)
-
-        subject = line
-        split = ItemWidgetWords.split_words(search_words, subject)
-
-        parts = [('pattern', word) if word in search_words else word for word in split]
+    """Widget that highlights the matching words of a line."""
+    def __init__(self, line, search_words, case_modifier=False):
 
         text = urwid.AttrMap(
-            urwid.Text(parts),
+            urwid.Text(mark_parts(line, search_words, case_modifier)),
             'line',
             {'pattern': 'pattern_focus', None: 'line_focus'}
         )
-
         super().__init__(text)
 
-    @staticmethod
-    def split_words(words, subject):
-        return [item for item in re.split(rf"({'|'.join(words)})", subject) if item]
+    def split_words(self, words, subject):
+        """Split the subject into pieces for later styling."""
+        # return [item for item in re.split(rf"({'|'.join(words)})", subject) if item]
+        return [word for word in re.split(rf"({'|'.join(words)})", subject) if word]
+
 
 class SearchEdit(urwid.Edit):
+    """Edit widget for the search input."""
+
     signals = ['done', 'toggle_regexp_modifier', 'toggle_case_modifier']
 
     def keypress(self, size, key):
@@ -144,13 +148,14 @@ class SearchEdit(urwid.Edit):
 
 
 class ResultList(urwid.ListBox):
+    """List of the found lines."""
     signals = ['resize']
 
     def __init__(self, *args):
         self.last_size = None
         urwid.ListBox.__init__(self, *args)
 
-    def render(self, size, focus):
+    def render(self, size, focus=False):
         if size != self.last_size:
             self.last_size = size
             urwid.emit_signal(self, 'resize', size)
@@ -158,21 +163,22 @@ class ResultList(urwid.ListBox):
 
 
 class LineCountWidget(urwid.Text):
-    def update(self, relevant_lines=None, visible_lines=None):
-        if not hasattr(self, 'relevant_lines'):
-            self.relevant_lines = 0
-            self.visible_lines = 0
+    """Widget that displays the number of matching lines / total lines."""
+    def __init__(self, line_count=0):
+        super().__init__('')
+        self.line_count = line_count
+        self.matching_lines = 0
 
-        if relevant_lines is not None:
-            self.relevant_lines = relevant_lines
+    def update(self, matching_lines=None):
+        """Update the widget with the current number of matching lines."""
+        if matching_lines is not None:
+            self.matching_lines = matching_lines
 
-        if visible_lines is not None:
-            self.visible_lines = visible_lines
-
-        self.set_text(f'{self.visible_lines}/{self.relevant_lines}')
+        self.set_text(f'{self.matching_lines}/{self.line_count}')
 
 
 class Selector(object):
+    """The main class of Selecta."""
     def __init__(self, revert_order, remove_bash_prefix, remove_zsh_prefix, regexp, case_sensitive,
                  remove_duplicates, show_matches, infile):
 
@@ -196,13 +202,18 @@ class Selector(object):
             if remove_zsh_prefix:
                 line = re.split(r'\s+', line, maxsplit=4)[-1]
 
-            if 'selecta <(history)' not in line:
-                if not remove_duplicates or line not in self.lines:
-                    self.lines.append(line)
+            if 'selecta <(history)' in line:
+                continue
+
+            if remove_duplicates and line in self.lines:
+                continue
+
+            self.lines.append(line)
 
         self.line_widgets = []
 
-        self.line_count_display = LineCountWidget('')
+        self.line_count_display = LineCountWidget(len(self.lines))
+
         self.search_edit = SearchEdit(edit_text='')
 
         self.modifier_display = urwid.Text('')
@@ -211,7 +222,8 @@ class Selector(object):
 
         urwid.connect_signal(self.search_edit, 'done', self.edit_done)
         urwid.connect_signal(self.search_edit, 'toggle_case_modifier', self.toggle_case_modifier)
-        urwid.connect_signal(self.search_edit, 'toggle_regexp_modifier', self.toggle_regexp_modifier)
+        urwid.connect_signal(self.search_edit, 'toggle_regexp_modifier',
+                             self.toggle_regexp_modifier)
         urwid.connect_signal(self.search_edit, 'change', self.edit_change)
 
         header = urwid.AttrMap(urwid.Columns([
@@ -230,15 +242,14 @@ class Selector(object):
         self.loop = urwid.MainLoop(self.view, palette, unhandled_input=self.on_unhandled_input)
         self.loop.screen.set_terminal_properties(colors=256)
 
-        self.line_count_display.update(self.listbox.last_size, len(self.item_list))
+        self.line_count_display.update(len(self.item_list))
 
-        # TODO workaround, when update_list is called directly, the linecount widget gets not updated
+        # HACK workaround, when update_list is called directly, the linecount widget gets not updated
         self.loop.set_alarm_in(0.01, lambda *loop: self.update_list(''))
-
         self.loop.run()
 
     def list_resize(self, size):
-        self.line_count_display.update(visible_lines=size[1])
+        self.line_count_display.update(size[1])
 
     def toggle_case_modifier(self):
         self.case_modifier = not self.case_modifier
@@ -260,40 +271,62 @@ class Selector(object):
         else:
             self.modifier_display.set_text('')
 
-    def update_using_regexp(self, pattern):
-
-        flags = re.UNICODE
+    def update_with_regex(self, pattern):
+        """Filter the list with a regular expression."""
+        flags = 0
         if not self.case_modifier:
             flags |= re.IGNORECASE
 
         try:
+            debug(pattern)
             re_search = re.compile(pattern, flags).search
 
             items = []
-            for line in self.lines:
-                match = re_search(line)
-                if match:
-                    if self.show_matches:
-                        items.append(ItemWidgetPattern(line, match=match.group()))
-                    else:
-                        items.append(ItemWidgetPlain(line))
+            if False:
+                for line in self.lines:
+                    match = re_search(line)
+                    if match:
+                        if self.show_matches:
+                            items.append(ItemWidgetPattern(line, match.group()))
+                        else:
+                            items.append(ItemWidgetPlain(line))
+            else:
+                # use faster(?) list comprehension
+                # items = [ItemWidgetPattern(line, match.group()) if match and self.show_matches else ItemWidgetPlain(line)
+                #          for line in self.lines if (match := re_search(line))]
+                items = [ItemWidgetPattern(line, match.group()) if match and self.show_matches else ItemWidgetPlain(line)
+                         for line in self.lines if (match := re_search(line))]
 
             if len(items) > 0:
-                self.item_list[:] = items
-                self.line_count_display.update(relevant_lines=len(self.item_list))
+                return items
             else:
-                self.item_list[:] = [urwid.Text(('empty_list', '- empty result -'))]
-                self.line_count_display.update(relevant_lines=0)
+                return [urwid.Text(('empty_list', '- no matches -'))]
 
         except re.error as err:
-            self.item_list[:] = [urwid.Text(('empty_list', f'Error in regular epression: {err}'))]
-            self.line_count_display.update(relevant_lines=0)
+            return [urwid.Text(('empty_list', f'Error in regular epression: {err}'))]
 
-    def check_all_words(self, subject, words):
-        return all(word in subject for word in words)
+    def update_with_words(self, search_text):
+        """Filter the list with a list of words."""
 
+        def check_all_words(subject, words):
+            """Check if all words are in the subject."""
+            if False:
+                if not self.case_modifier:
+                    return all(word.lower() in subject.lower() for word in words)
+                else:
+                    return all(word in subject for word in words)
+            else:
+                # slightly faster
+                return (all(word.lower() in subject.lower() for word in words)
+                        if not self.case_modifier else all(word in subject for word in words))
+
+        words = search_text.split()
+        return [ItemWidgetWords(line, search_words=words, case_modifier=self.case_modifier)
+                for line in self.lines if check_all_words(line, words)]
 
     def update_list(self, search_text=''):
+        """Filter the list with the given search criteria."""
+
         # show all lines if search_text is empty
         if search_text == '' or search_text == '"' or search_text == '""':
             self.item_list[:] = [ItemWidgetPlain(line) for line in self.lines]
@@ -304,23 +337,20 @@ class Selector(object):
             self.item_list[:] = [ItemWidgetPlain(item) for item in self.lines if search_text.lstrip('"') in item]
 
         elif self.regexp_modifier:
-            self.update_using_regexp(search_text)
+            self.item_list[:] = self.update_with_regex(search_text)
 
         # split search into words and search for each word
         else:
-            for item in self.lines:
-                debug(item)
-                debug(search_text)
-            self.item_list[:] = [ItemWidgetPlain(line) for line in self.lines if self.check_all_words(line, search_text.split())]
-            if len(self.item_list) == 0:
-                self.item_list[:] = [urwid.Text(('empty_list', '- empty result -'))]
-        #                            items.append(ItemWidgetWords(line, search_words=search_words))
+            self.item_list[:] = self.update_with_words(search_text)
 
+        if len(self.item_list) == 0:
+            self.item_list[:] = [urwid.Text(('empty_list', '- empty result -'))]
+        self.line_count_display.update(len(self.item_list))
 
-        # try:
-        #     self.item_list.set_focus(0)
-        # except IndexError:  # no items
-        #     pass
+        try:
+            self.item_list.set_focus(0)
+        except IndexError:  # no items
+            pass
 
     def edit_change(self, widget, search_text):
         self.update_list(search_text)
@@ -398,7 +428,7 @@ def main():
     parser.add_argument('-b', '--remove-bash-prefix', action='store_true', default=False, help='remove the numeric prefix from bash history')
     parser.add_argument('-z', '--remove-zsh-prefix', action='store_true', default=False, help='remove the time prefix from zsh history')
     parser.add_argument('-r', '--regexp', action='store_true', default=False, help='start in regexp mode')
-    parser.add_argument('-a', '--case-sensitive', action='store_true', default=True, help='start in case-sensitive mode')
+    parser.add_argument('-a', '--case-sensitive', action='store_true', default=False, help='start in case-sensitive mode')
     parser.add_argument('-d', '--remove-duplicates', action='store_true', default=False, help='remove duplicated lines')
     parser.add_argument('-y', '--show-matches', action='store_true', default=False, help='highlight the part of each line which match the substrings or regexp')
     parser.add_argument('--bash', action='store_true', default=False, help='standard for bash history search, same as -b -i -d')
@@ -406,6 +436,8 @@ def main():
     parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), default=sys.stdin, help='the file which lines you want to select eg. <(history)')
 
     args = parser.parse_args()
+
+    debug('\033[2J')
 
     if args.infile.name == '<stdin>':
         parser.print_help()
