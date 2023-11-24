@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "selecta"
 version = "0.2.0"
 authors = [
-  { name="Thomas Schüßler", email="vindolin@gmail.com" },
+  {name="Thomas Schüßler", email="vindolin@gmail.com" },
 ]
 dependencies = [
   "urwid <= 2.0.0",
@@ -29,3 +29,4 @@ keywords = [
 [project.scripts]
 selecta = 'selecta:main'
 selecta_install_bash = 'selecta.commands.selecta_install_bash:main'
+selecta_install_zsh = 'selecta.commands.selecta_install_zsh:main'
