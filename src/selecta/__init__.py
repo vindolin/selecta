@@ -241,6 +241,7 @@ class Selector(object):
 
         self.loop = urwid.MainLoop(self.view, palette, unhandled_input=self.on_unhandled_input)
         self.loop.screen.set_terminal_properties(colors=256)
+        # self.loop.screen.set_terminal_properties(colors=2**24)
 
         self.line_count_display.update(len(self.item_list))
 
@@ -360,14 +361,15 @@ class Selector(object):
 
     def on_unhandled_input(self, input_):
         if isinstance(input_, tuple):  # mouse events
-            return True
+            return False
 
         if input_ == 'enter':
             focused_widget = self.listbox.get_focus()[0]
             if focused_widget is not None:
                 line = focused_widget.line
+                return True
             else:
-                return
+                return False
 
             self.view.set_header(urwid.AttrMap(
                 urwid.Text(f'selected: {line}'), 'head'))
@@ -406,7 +408,7 @@ class Selector(object):
             self.search_edit.set_edit_pos(len(self.search_edit.get_text()[0]))
             self.view.set_focus('header')
 
-        return True
+        return False
 
     def inject_line(self, command):
         """Inject the line into the terminal."""
@@ -434,6 +436,7 @@ def main():
     parser.add_argument('--bash', action='store_true', default=False, help='standard for bash history search, same as -b -i -d')
     parser.add_argument('--zsh', action='store_true', default=False, help='standard for zsh history search, same as -b -i -d')
     parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), default=sys.stdin, help='the file which lines you want to select eg. <(history)')
+    parser.add_argument('-v', '--version', help='print selecta version', action='version', version='%(prog)s 0.2.0')
 
     args = parser.parse_args()
 
