@@ -358,10 +358,10 @@ class Selector(object):
 
         self.item_list.set_focus(0)
 
-    def edit_change(self, widget, search_text):
+    def edit_change(self, _, search_text):
         self.update_list(search_text)
 
-    def edit_done(self, search_text):
+    def edit_done(self):
         self.view.set_focus('body')
 
     def on_unhandled_input(self, input_):
