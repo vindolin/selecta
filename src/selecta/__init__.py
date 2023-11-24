@@ -62,7 +62,8 @@ class ItemWidgetPattern(ItemWidget):
         # highlight the matches
         matches = re.split(f'({re.escape(match)})', self.line)
 
-        parts = [('pattern', part) if part == match else part for part in matches]
+        parts = [('pattern', part) if part == match else part
+                 for part in matches]
 
         text = urwid.AttrMap(
             urwid.Text(parts),
@@ -83,10 +84,14 @@ def mark_parts(subject_string, s_words, case_sensitive=False):
         flags |= re.IGNORECASE
 
     # split sub string at word boundaries
-    s_parts = [s_word for s_word in re.split(rf"({'|'.join(s_words)})", subject_string, flags=flags) if s_word]
+    debug('|'.join(s_words))
+    s_parts = ([s_word for s_word in
+                re.split(rf"({'|'.join([re.escape(word) for word in s_words])})",
+                         subject_string, flags=flags) if s_word])
 
     # create list of search words as lookup list,
-    s_words_x = s_words if case_sensitive else [s_word.lower() for s_word in s_words]
+    s_words_x = s_words if case_sensitive else [s_word.lower()
+                                                for s_word in s_words]
 
     # generate list of the word parts and mark the search words
     if False:
@@ -97,8 +102,8 @@ def mark_parts(subject_string, s_words, case_sensitive=False):
             l_parts.append(wrap_part(word) if word_x in s_words_x else word)
     else:
         # use faster(?) list comprehension
-        l_parts = [wrap_part(word) if (word if case_sensitive else word.lower()) in s_words_x else word
-                   for word in s_parts]
+        l_parts = [wrap_part(word) if (word if case_sensitive else word.lower())
+                   in s_words_x else word for word in s_parts]
 
     return l_parts
 
@@ -141,10 +146,6 @@ class SearchEdit(urwid.Edit):
             urwid.emit_signal(self, 'toggle_regexp_modifier')
             urwid.emit_signal(self, 'change', self, self.get_edit_text())
             return
-        # elif key == 'ctrl d':
-        #     urwid.emit_signal(self, 'toggle_directory_modifier')
-        #     urwid.emit_signal(self, 'change', self, self.get_edit_text())
-        #     return
         elif key == 'down':
             urwid.emit_signal(self, 'done', None)
             return
@@ -190,7 +191,6 @@ class Selector(object):
         self.show_matches = show_matches
         self.regexp_modifier = regexp
         self.case_modifier = case_sensitive
-        # self.directory_modifier_modifier = False
         self.remove_bash_prefix = remove_bash_prefix
 
         self.lines = []
@@ -231,7 +231,6 @@ class Selector(object):
         urwid.connect_signal(self.search_edit, 'toggle_case_modifier', self.toggle_case_modifier)
         urwid.connect_signal(self.search_edit, 'toggle_regexp_modifier',
                              self.toggle_regexp_modifier)
-        # urwid.connect_signal(self.search_edit, 'toggle_directory_modifier', self.toggle_directory_modifier)
         urwid.connect_signal(self.search_edit, 'change', self.edit_change)
 
         header = urwid.AttrMap(urwid.Columns([
@@ -268,19 +267,12 @@ class Selector(object):
         self.regexp_modifier = not self.regexp_modifier
         self.update_modifiers()
 
-    def toggle_directory_modifier(self):
-        self.directory_modifier = not self.directory_modifier
-        self.update_modifiers()
-
     def update_modifiers(self):
         modifiers = []
         if self.regexp_modifier:
             modifiers.append('regexp')
         if self.case_modifier:
             modifiers.append('case')
-
-        # if self.directory_modifier_modifier:
-        #     modifiers.append('directory')
 
         if len(modifiers) > 0:
             self.modifier_display.set_text(f'[{", ".join(modifiers)}]')
@@ -308,9 +300,8 @@ class Selector(object):
                             items.append(ItemWidgetPlain(line))
             else:
                 # use faster(?) list comprehension
-                # items = [ItemWidgetPattern(line, match.group()) if match and self.show_matches else ItemWidgetPlain(line)
-                #          for line in self.lines if (match := re_search(line))]
-                items = [ItemWidgetPattern(line, match.group()) if match and self.show_matches else ItemWidgetPlain(line)
+                items = [ItemWidgetPattern(line, match.group())
+                         if match and self.show_matches else ItemWidgetPlain(line)
                          for line in self.lines if (match := re_search(line))]
 
             if len(items) > 0:
@@ -350,7 +341,8 @@ class Selector(object):
 
         # search for whole string if search_text begins with quotation mark
         elif search_text.startswith('"'):
-            self.item_list[:] = [ItemWidgetPlain(item) for item in self.lines if search_text.lstrip('"') in item]
+            self.item_list[:] = [ItemWidgetPlain(item)
+                                 for item in self.lines if search_text.lstrip('"') in item]
 
         elif self.regexp_modifier:
             self.item_list[:] = self.update_with_regex(search_text)
@@ -411,7 +403,6 @@ class Selector(object):
         #             line = self.listbox.get_focus()[0].line
         #             self.lines.remove(line)
         #             self.item_list[:] = [ItemWidgetPlain(item) for item in self.lines]
-
         #             # TODO make this working when in bash mode
         #             call("sed -i '/^{}$/d' ~/.bash_history".format(line), shell=True)
         #         except AttributeError:  # empty list
