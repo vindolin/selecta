@@ -106,6 +106,7 @@ def mark_parts(subject_string, s_words, case_sensitive=False):
 class ItemWidgetWords(ItemWidget):
     """Widget that highlights the matching words of a line."""
     def __init__(self, line, search_words, case_modifier=False):
+        self.line = line
 
         text = urwid.AttrMap(
             urwid.Text(mark_parts(line, search_words, case_modifier)),
