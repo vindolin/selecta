@@ -206,7 +206,8 @@ class Selector(object):
                 line = line.split(None, 1)[1]
 
             if remove_zsh_prefix:
-                line = re.split(r'\s+', line, maxsplit=4)[-1]
+                line = line.split(None, 1)[1]
+                # legacy line = re.split(r'\s+', line, maxsplit=4)[-1]
 
             if 'selecta' in line:
                 continue
