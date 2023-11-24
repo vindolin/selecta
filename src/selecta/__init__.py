@@ -202,7 +202,7 @@ class Selector(object):
             if remove_zsh_prefix:
                 line = re.split(r'\s+', line, maxsplit=4)[-1]
 
-            if 'selecta <(history)' in line:
+            if 'selecta' in line:
                 continue
 
             if remove_duplicates and line in self.lines:
