@@ -412,10 +412,6 @@ class Selector(object):
 
     def inject_line(self, command):
         """Inject the line into the terminal."""
-
-        # clar the screen
-        print('\033[0m\033[2J')
-
         command = (struct.pack('B', c) for c in os.fsencode(command))
         fd = sys.stdin.fileno()
         old = termios.tcgetattr(fd)
