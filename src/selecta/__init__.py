@@ -17,9 +17,6 @@ def debug(value, prefix=''):
         file.write(f'{prefix} {value}\n')
 
 
-if sys.version_info < (3, 0):
-    sys.exit('Sorry, you need Python 3 to run this!')
-
 palette = [
     ('head', '', '', '', '#bbb', '#618'),
     ('body', '', '', '', '#ddd', '#000'),
