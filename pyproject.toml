@@ -9,7 +9,7 @@ authors = [
   {name="Thomas Schüßler", email="vindolin@gmail.com" },
 ]
 dependencies = [
-  "urwid <= 2.0.0",
+  "urwid >= 2.2.0",
 ]
 description = "Interactively select an entry from your bash/zsh history."
 readme = "README.rst"
