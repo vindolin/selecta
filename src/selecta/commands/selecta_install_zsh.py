@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import os
 
 command = r'bindkey -s "^[r"  "selecta --zsh -y <(history)^M"'
