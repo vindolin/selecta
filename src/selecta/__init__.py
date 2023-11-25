@@ -26,8 +26,8 @@ palette = [
     ('focus', '', '', '', '#000', '#da0'),
     ('input', '', '', '', '#fff', '#618'),
     ('empty_list', '', '', '', '#ddd', '#b00'),
-    ('pattern', '', '', '', '#f91', ''),
-    ('pattern_focus', '', '', '', 'bold,#a00', '#da0'),
+    ('match', '', '', '', '#f91', ''),
+    ('match_focus', '', '', '', 'bold,#a00', '#da0'),
     ('line', '', '', '', '', ''),
     ('line_focus', '', '', '', '#000', '#da0'),
 ]
@@ -52,6 +52,16 @@ class ItemWidgetPlain(ItemWidget):
         super().__init__(text)
 
 
+class ItemWidgetStartswith(ItemWidget):
+    """Widget that displays a line as is."""
+    def __init__(self, line, search_text):
+        self.line = line
+        parts = [('match', part) if part == search_text else part
+                 for part in re.split(f'({re.escape(search_text)})', self.line)]
+        text = urwid.AttrMap(urwid.Text(parts), 'line', 'line_focus')
+        super().__init__(text)
+
+
 class ItemWidgetPattern(ItemWidget):
     """Widget that highlights the matching part of a line."""
     def __init__(self, line, match):
@@ -60,13 +70,13 @@ class ItemWidgetPattern(ItemWidget):
         # highlight the matches
         matches = re.split(f'({re.escape(match)})', self.line)
 
-        parts = [('pattern', part) if part == match else part
+        parts = [('match', part) if part == match else part
                  for part in matches]
 
         text = urwid.AttrMap(
             urwid.Text(parts),
             'line',
-            {'pattern': 'pattern_focus', None: 'line_focus'}
+            {'match': 'match_focus', None: 'line_focus'}
         )
 
         super().__init__(text)
@@ -74,7 +84,7 @@ class ItemWidgetPattern(ItemWidget):
 
 def mark_parts(subject_string, s_words, case_sensitive=False):
     def wrap_part(part):
-        return ('pattern', part)
+        return ('match', part)
 
     # set re flags
     flags = 0
@@ -114,7 +124,7 @@ class ItemWidgetWords(ItemWidget):
         text = urwid.AttrMap(
             urwid.Text(mark_parts(line, search_words, case_modifier)),
             'line',
-            {'pattern': 'pattern_focus', None: 'line_focus'}
+            {'match': 'match_focus', None: 'line_focus'}
         )
         super().__init__(text)
 
@@ -341,8 +351,10 @@ class Selector(object):
 
         # search for whole string if search_text begins with quotation mark
         elif search_text.startswith('"'):
-            self.item_list[:] = [ItemWidgetPlain(item)
-                                 for item in self.lines if search_text.lstrip('"') in item]
+            search_text = search_text[1:]
+            self.item_list[:] = [ItemWidgetStartswith(line, search_text)
+                                 if self.show_matches else ItemWidgetPlain(line)
+                                 for line in self.lines if search_text in line]
 
         elif self.regexp_modifier:
             self.item_list[:] = self.update_with_regex(search_text)
@@ -361,7 +373,7 @@ class Selector(object):
     def edit_change(self, _, search_text):
         self.update_list(search_text)
 
-    def edit_done(self):
+    def edit_done(self, _):
         self.view.set_focus('body')
 
     def on_unhandled_input(self, input_):
