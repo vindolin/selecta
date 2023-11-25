@@ -89,7 +89,6 @@ def mark_parts(subject_string, s_words, case_sensitive=False):
         flags |= re.IGNORECASE
 
     # split sub string at word boundaries
-    # debug('|'.join(s_words))
     s_parts = ([s_word for s_word in
                 re.split(rf"({'|'.join([re.escape(word) for word in s_words])})",
                          subject_string, flags=flags) if s_word])
