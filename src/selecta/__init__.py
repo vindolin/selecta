@@ -224,23 +224,11 @@ class Selector(object):
             self.lines.append(line)
 
         self.matching_line_count = len(self.lines)
-
         self.line_widgets = []
 
         self.line_count_display = LineCountWidget(self.matching_line_count)
-
         self.search_edit = SearchEdit(edit_text='')
-
         self.modifier_display = urwid.Text('')
-
-        self.update_modifiers()
-
-        urwid.connect_signal(self.search_edit, 'done', self.edit_done)
-        urwid.connect_signal(self.search_edit, 'toggle_case_modifier', self.toggle_case_modifier)
-        urwid.connect_signal(self.search_edit, 'toggle_regexp_modifier',
-                             self.toggle_regexp_modifier)
-        urwid.connect_signal(self.search_edit, 'change', self.edit_change)
-
         header = urwid.AttrMap(urwid.Columns([
             urwid.AttrMap(self.search_edit, 'input', 'input'),
             self.modifier_display,
@@ -249,11 +237,16 @@ class Selector(object):
 
         self.item_list = urwid.SimpleListWalker(self.line_widgets)
         self.listbox = ResultList(self.item_list)
-
-        urwid.connect_signal(self.listbox, 'resize', self.list_resize)
-
         self.view = urwid.Frame(body=self.listbox, header=header)
 
+        urwid.connect_signal(self.search_edit, 'done', self.edit_done)
+        urwid.connect_signal(self.search_edit, 'toggle_case_modifier', self.toggle_case_modifier)
+        urwid.connect_signal(self.search_edit, 'toggle_regexp_modifier',
+                             self.toggle_regexp_modifier)
+        urwid.connect_signal(self.search_edit, 'change', self.edit_change)
+        urwid.connect_signal(self.listbox, 'resize', self.list_resize)
+
+        self.update_modifiers()
         self.loop = urwid.MainLoop(self.view, palette, unhandled_input=self.on_unhandled_input)
 
         # find out what this pylint error means (happens from >=2.2.0)
@@ -263,9 +256,8 @@ class Selector(object):
         # self.loop.screen.set_terminal_properties(colors=2**24)
 
         self.line_count_display.update(self.matching_line_count)
+        self.update_list('')
 
-        # HACK workaround, when update_list is called directly, the linecount widget gets not updated
-        self.loop.set_alarm_in(0.01, lambda *loop: self.update_list(''))
         self.loop.run()
 
     def update_item_list(self, items):
