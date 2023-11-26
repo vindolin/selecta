@@ -180,18 +180,17 @@ class LineCountWidget(urwid.Text):
     def __init__(self, line_count=0):
         super().__init__('')
         self.line_count = line_count
-        self.matching_lines = 0
 
-    def update(self, matching_lines=None):
+    def update(self, matching_line_count):
         """Update the widget with the current number of matching lines."""
-        if matching_lines is not None:
-            self.matching_lines = matching_lines
-
-        self.set_text(f'{self.matching_lines}/{self.line_count}')
+        self.set_text(f'{matching_line_count}/{self.line_count}')
 
 
 class Selector(object):
     """The main class of Selecta."""
+
+    matching_line_count = 0
+
     def __init__(self, revert_order, remove_bash_prefix, remove_zsh_prefix, regexp, case_sensitive,
                  remove_duplicates, show_matches, infile):
 
@@ -224,9 +223,11 @@ class Selector(object):
 
             self.lines.append(line)
 
+        self.matching_line_count = len(self.lines)
+
         self.line_widgets = []
 
-        self.line_count_display = LineCountWidget(len(self.lines))
+        self.line_count_display = LineCountWidget(self.matching_line_count)
 
         self.search_edit = SearchEdit(edit_text='')
 
@@ -261,14 +262,20 @@ class Selector(object):
         self.loop.screen.set_terminal_properties(colors=256)
         # self.loop.screen.set_terminal_properties(colors=2**24)
 
-        self.line_count_display.update(len(self.item_list))
+        self.line_count_display.update(self.matching_line_count)
 
         # HACK workaround, when update_list is called directly, the linecount widget gets not updated
         self.loop.set_alarm_in(0.01, lambda *loop: self.update_list(''))
         self.loop.run()
 
+    def update_item_list(self, items):
+        """Update the list of items."""
+        self.item_list[:] = items
+        self.matching_line_count = len(self.item_list)
+        self.line_count_display.update(self.matching_line_count)
+
     def list_resize(self, size):
-        self.line_count_display.update(size[1])
+        pass
 
     def toggle_case_modifier(self):
         self.case_modifier = not self.case_modifier
@@ -290,7 +297,7 @@ class Selector(object):
         else:
             self.modifier_display.set_text('')
 
-    def update_with_regex(self, pattern):
+    def filter_regex(self, pattern):
         """Filter the list with a regular expression."""
         flags = 0
         if not self.case_modifier:
@@ -322,7 +329,7 @@ class Selector(object):
         except re.error as err:
             return [urwid.Text(('empty_list', f'Error in regular epression: {err}'))]
 
-    def update_with_words(self, search_text):
+    def filter_words(self, search_text):
         """Filter the list with a list of words."""
 
         def check_all_words(subject, words):
@@ -346,27 +353,27 @@ class Selector(object):
 
         # show all lines if search_text is empty
         if search_text == '' or search_text == '"' or search_text == '""':
-            self.item_list[:] = [ItemWidgetPlain(line) for line in self.lines]
-            self.line_count_display.update(len(self.item_list))
+            self.update_item_list([ItemWidgetPlain(line) for line in self.lines])
 
         # search for whole string if search_text begins with quotation mark
         elif search_text.startswith('"'):
             search_text = search_text[1:]
-            self.item_list[:] = [ItemWidgetStartswith(line, search_text)
-                                 if self.show_matches else ItemWidgetPlain(line)
-                                 for line in self.lines if search_text in line]
+            self.update_item_list([
+                ItemWidgetStartswith(line, search_text) if self.show_matches else ItemWidgetPlain(line)
+                for line in self.lines if search_text in line])
 
         elif self.regexp_modifier:
-            self.item_list[:] = self.update_with_regex(search_text)
+            self.update_item_list(self.filter_regex(search_text))
 
         # split search into words and search for each word
         else:
-            self.item_list[:] = self.update_with_words(search_text)
+            self.update_item_list(self.filter_words(search_text))
 
         # show empty list message if no items are found
         if len(self.item_list) == 0:
             self.item_list[:] = [urwid.Text(('empty_list', '- empty result -'))]
-        self.line_count_display.update(len(self.item_list))
+            self.matching_line_count = 0
+            self.line_count_display.update(self.matching_line_count)
 
         self.item_list.set_focus(0)
 
