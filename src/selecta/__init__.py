@@ -87,10 +87,7 @@ def mark_parts(subject_string, s_words, case_sensitive=False):
     def wrap_part(part):
         return ('match', part)
 
-    # set re flags
-    flags = 0
-    if not case_sensitive:
-        flags |= re.IGNORECASE
+    flags = re.IGNORECASE if not case_sensitive else 0
 
     # split sub string at word boundaries
     s_parts = ([s_word for s_word in
@@ -190,6 +187,12 @@ class Selector(object):
     """The main class of Selecta."""
 
     matching_line_count = 0
+    show_matches = False
+    regexp_modifier = False
+    case_modifier = False
+    remove_bash_prefix = False
+    line_widgets = []
+    lines = []
 
     def __init__(self, revert_order, remove_bash_prefix, remove_zsh_prefix, regexp, case_sensitive,
                  remove_duplicates, show_matches, infile):
@@ -198,8 +201,6 @@ class Selector(object):
         self.regexp_modifier = regexp
         self.case_modifier = case_sensitive
         self.remove_bash_prefix = remove_bash_prefix
-
-        self.lines = []
 
         if revert_order:
             lines = reversed(infile.readlines())
@@ -215,20 +216,16 @@ class Selector(object):
                 line = line.split(None, 1)[1]
                 # legacy line = re.split(r'\s+', line, maxsplit=4)[-1]
 
-            if 'selecta' in line:
-                continue
-
             if remove_duplicates and line in self.lines:
                 continue
 
             self.lines.append(line)
 
         self.matching_line_count = len(self.lines)
-        self.line_widgets = []
 
-        self.line_count_display = LineCountWidget(self.matching_line_count)
         self.search_edit = SearchEdit(edit_text='')
         self.modifier_display = urwid.Text('')
+        self.line_count_display = LineCountWidget(self.matching_line_count)
         header = urwid.AttrMap(urwid.Columns([
             urwid.AttrMap(self.search_edit, 'input', 'input'),
             self.modifier_display,
@@ -239,11 +236,12 @@ class Selector(object):
         self.listbox = ResultList(self.item_list)
         self.view = urwid.Frame(body=self.listbox, header=header)
 
-        urwid.connect_signal(self.search_edit, 'done', self.edit_done)
-        urwid.connect_signal(self.search_edit, 'toggle_case_modifier', self.toggle_case_modifier)
-        urwid.connect_signal(self.search_edit, 'toggle_regexp_modifier',
-                             self.toggle_regexp_modifier)
         urwid.connect_signal(self.search_edit, 'change', self.edit_change)
+        urwid.connect_signal(self.search_edit, 'done', self.edit_done)
+
+        urwid.connect_signal(self.search_edit, 'toggle_case_modifier', lambda *_: self.toggle_modifier('case_modifier'))
+        urwid.connect_signal(self.search_edit, 'toggle_regexp_modifier', lambda *_: self.toggle_modifier('regexp_modifier'))
+
         urwid.connect_signal(self.listbox, 'resize', self.list_resize)
 
         self.update_modifiers()
@@ -262,22 +260,19 @@ class Selector(object):
 
     def update_item_list(self, items):
         """Update the list of items."""
-        self.item_list[:] = items
+        self.item_list[:] = items  # itemList is a SimpleListWalker which monitors the list for changes
         self.matching_line_count = len(self.item_list)
         self.line_count_display.update(self.matching_line_count)
 
     def list_resize(self, size):
         pass
 
-    def toggle_case_modifier(self):
-        self.case_modifier = not self.case_modifier
-        self.update_modifiers()
-
-    def toggle_regexp_modifier(self):
-        self.regexp_modifier = not self.regexp_modifier
+    def toggle_modifier(self, modifier):
+        setattr(self, modifier, not getattr(self, modifier))
         self.update_modifiers()
 
     def update_modifiers(self):
+        """Update the modifier display"""
         modifiers = []
         if self.regexp_modifier:
             modifiers.append('regexp')
@@ -291,9 +286,8 @@ class Selector(object):
 
     def filter_regex(self, pattern):
         """Filter the list with a regular expression."""
-        flags = 0
-        if not self.case_modifier:
-            flags |= re.IGNORECASE
+
+        flags = re.IGNORECASE if not self.case_modifier else 0
 
         try:
             re_search = re.compile(pattern, flags).search
@@ -397,10 +391,10 @@ class Selector(object):
             raise urwid.ExitMainLoop()
 
         elif input_ == 'ctrl a':
-            self.toggle_case_modifier()
+            self.toggle_modifier('case_modifier')
 
         elif input_ == 'ctrl r':
-            self.toggle_regexp_modifier()
+            self.toggle_modifier('regexp_modifier')
 
         elif input_ == 'backspace':
             self.search_edit.set_edit_text(self.search_edit.get_text()[0][:-1])
@@ -419,10 +413,8 @@ class Selector(object):
 
     def inject_line(self, command):
         """Inject the line into the terminal."""
-        command = (struct.pack('B', c) for c in os.fsencode(command))
-
         fd = sys.stdin.fileno()
-        for c in command:
+        for c in (struct.pack('B', c) for c in os.fsencode(command)):
             fcntl.ioctl(fd, termios.TIOCSTI, c)
 
 
@@ -445,18 +437,19 @@ def main():
 
     # debug('\033[2J')
 
+    # if no infile is given, print help and exit
     if args.infile.name == '<stdin>':
         parser.print_help()
         exit('\nYou must provide an infile!')
 
     if args.bash:
-        args.revert_order = True
         args.remove_bash_prefix = True
-        args.remove_duplicates = True
 
     if args.zsh:
-        args.revert_order = True
         args.remove_zsh_prefix = True
+
+    if args.bash or args.zsh:
+        args.revert_order = True
         args.remove_duplicates = True
 
     Selector(
