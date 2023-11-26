@@ -17,12 +17,14 @@ def main():
         for line in f:
             if command in line:  # already installed
                 already_there = True
+                print('keybinding already installed in .bashrc')
                 break
 
     if not already_there:
         with open(os.path.join(os.path.expanduser("~"), '.bashrc'), 'a+') as f:
             # append hotkey binding to .bashrc
             f.write('\n{}\n'.format(command))
+            print('keybinding has been appended to .bashrc')
 
 
 if __name__ == '__main__':
