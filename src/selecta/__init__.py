@@ -90,9 +90,9 @@ class ItemWidgetPattern(ItemWidget):
         super().__init__(text)
 
 
-def mark_parts(subject_string, s_words, case_sensitive=False):
+def mark_parts(subject_string, s_words, case_sensitive, highlight_matches):
     def wrap_part(part):
-        return ('match', part)
+        return ('match', part) if highlight_matches else part
 
     flags = re.IGNORECASE if not case_sensitive else 0
 
@@ -114,7 +114,7 @@ def mark_parts(subject_string, s_words, case_sensitive=False):
             l_parts.append(wrap_part(word) if word_x in s_words_x else word)
     else:
         # use faster(?) list comprehension
-        l_parts = [wrap_part(word) if (word if case_sensitive else word.lower())
+        l_parts = [wrap_part(word) if (word if highlight_matches else word.lower())
                    in s_words_x else word for word in s_parts]
 
     return l_parts
@@ -122,11 +122,11 @@ def mark_parts(subject_string, s_words, case_sensitive=False):
 
 class ItemWidgetWords(ItemWidget):
     """Widget that highlights the matching words of a line."""
-    def __init__(self, line, search_words, case_modifier=False):
+    def __init__(self, line, search_words, case_modifier, highlight_matches):
         self.line = line
 
         text = urwid.AttrMap(
-            urwid.Text(mark_parts(line, search_words, case_modifier)),
+            urwid.Text(mark_parts(line, search_words, case_modifier, highlight_matches)),
             'line',
             {'match': 'match_focus', None: 'line_focus'}
         )
@@ -193,7 +193,7 @@ class LineCountWidget(urwid.Text):
 class Selecta(object):
     """The main class of Selecta."""
 
-    show_matches = False
+    highlight_matches = False
     regexp_modifier = False
     case_modifier = False
 
@@ -201,14 +201,16 @@ class Selecta(object):
     line_widgets = []
     lines = []
 
-    def __init__(self, infile, reverse_order=False, remove_bash_prefix=False, remove_zsh_prefix=False, regexp=False, case_sensitive=False,
-                 remove_duplicates=False, show_matches=False, test_mode=False):
+    def __init__(self, infile, reverse_order=False,
+                 remove_bash_prefix=False, remove_zsh_prefix=False, regexp=False, case_sensitive=False,
+                 remove_duplicates=False, highlight_matches=False, test_mode=False):
 
-        self.show_matches = show_matches
+        self.highlight_matches = highlight_matches
         self.regexp_modifier = regexp
         self.case_modifier = case_sensitive
 
-        self.lines = self.parse_lines(infile, reverse_order, remove_bash_prefix, remove_zsh_prefix, remove_duplicates)
+        self.lines = self.parse_lines(infile, reverse_order,
+                                      remove_bash_prefix, remove_zsh_prefix, remove_duplicates)
         self.matching_line_count = len(self.lines)
 
         self.search_edit = SearchEdit(edit_text='')
@@ -227,8 +229,10 @@ class Selecta(object):
         urwid.connect_signal(self.search_edit, 'change', self.edit_change)
         urwid.connect_signal(self.search_edit, 'done', self.edit_done)
 
-        urwid.connect_signal(self.search_edit, 'toggle_case_modifier', lambda *_: self.toggle_modifier('case_modifier'))
-        urwid.connect_signal(self.search_edit, 'toggle_regexp_modifier', lambda *_: self.toggle_modifier('regexp_modifier'))
+        urwid.connect_signal(self.search_edit, 'toggle_case_modifier',
+                             lambda *_: self.toggle_modifier('case_modifier'))
+        urwid.connect_signal(self.search_edit, 'toggle_regexp_modifier',
+                             lambda *_: self.toggle_modifier('regexp_modifier'))
 
         urwid.connect_signal(self.listbox, 'resize', self.list_resize)
 
@@ -236,7 +240,8 @@ class Selecta(object):
         self.loop = urwid.MainLoop(self.view, palette, unhandled_input=self.on_unhandled_input)
 
         # find out what this pylint error means (happens from >=2.2.0)
-        # Cannot access member "set_terminal_properties" for type "BaseScreen" Member "set_terminal_properties" is unknown
+        # Cannot access member "set_terminal_properties"
+        # for type "BaseScreen" Member "set_terminal_properties" is unknown
         # it doesn't seem to be a problem though
         self.loop.screen.set_terminal_properties(colors=256)  # type: ignore - make pylance happy
         # self.loop.screen.set_terminal_properties(colors=2**24)
@@ -246,7 +251,8 @@ class Selecta(object):
         if not test_mode:
             self.loop.run()
 
-    def parse_lines(self, infile, reverse_order, remove_bash_prefix, remove_zsh_prefix, remove_duplicates):
+    def parse_lines(self, infile, reverse_order,
+                    remove_bash_prefix, remove_zsh_prefix, remove_duplicates):
         """Get the lines from the infile."""
 
         lines = []
@@ -309,14 +315,14 @@ class Selecta(object):
                 for line in self.lines:
                     match = re_search(line)
                     if match:
-                        if self.show_matches:
+                        if self.highlight_matches:
                             items.append(ItemWidgetPattern(line, match.group()))
                         else:
                             items.append(ItemWidgetPlain(line))
             else:
                 # use faster(?) list comprehension
                 items = [ItemWidgetPattern(line, match.group())
-                         if match and self.show_matches else ItemWidgetPlain(line)
+                         if match and self.highlight_matches else ItemWidgetPlain(line)
                          for line in self.lines if (match := re_search(line))]
 
             if len(items) > 0:
@@ -343,7 +349,8 @@ class Selecta(object):
                         if not self.case_modifier else all(word in subject for word in words))
 
         words = search_text.split()
-        return [ItemWidgetWords(line, search_words=words, case_modifier=self.case_modifier)
+        return [ItemWidgetWords(line, search_words=words,
+                                case_modifier=self.case_modifier, highlight_matches=self.highlight_matches)
                 for line in self.lines if check_all_words(line, words)]
 
     def update_list(self, search_text=''):
@@ -357,7 +364,7 @@ class Selecta(object):
         elif search_text.startswith('"'):
             search_text = search_text[1:]
             self.update_item_list([
-                ItemWidgetStartswith(line, search_text) if self.show_matches else ItemWidgetPlain(line)
+                ItemWidgetStartswith(line, search_text) if self.highlight_matches else ItemWidgetPlain(line)
                 for line in self.lines if search_text in line])
 
         elif self.regexp_modifier:
@@ -427,17 +434,46 @@ class Selecta(object):
 def main():
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--reverse-order', action='store_true', default=False, help='reverse the order of the lines')
-    parser.add_argument('-b', '--remove-bash-prefix', action='store_true', default=False, help='remove the numeric prefix from bash history')
-    parser.add_argument('-z', '--remove-zsh-prefix', action='store_true', default=False, help='remove the time prefix from zsh history')
-    parser.add_argument('-r', '--regexp', action='store_true', default=False, help='start in regexp mode')
-    parser.add_argument('-a', '--case-sensitive', action='store_true', default=False, help='start in case-sensitive mode')
-    parser.add_argument('-d', '--remove-duplicates', action='store_true', default=False, help='remove duplicated lines')
-    parser.add_argument('-y', '--show-matches', action='store_true', default=False, help='highlight the part of each line which match the substrings or regexp')
-    parser.add_argument('--bash', action='store_true', default=False, help='standard for bash history search, same as -b -i -d')
-    parser.add_argument('--zsh', action='store_true', default=False, help='standard for zsh history search, same as -z -i -d')
-    parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), default=sys.stdin, help='the file which lines you want to select eg. <(history)')
-    parser.add_argument('-v', '--version', help='print selecta version', action='version', version=f'%(prog)s {__version__}')
+    parser.add_argument('-i', '--reverse-order',
+                        action='store_true', default=False,
+                        help='reverse the order of the lines')
+
+    parser.add_argument('-b', '--remove-bash-prefix',
+                        action='store_true', default=False,
+                        help='remove the numeric prefix from bash history')
+
+    parser.add_argument('-z', '--remove-zsh-prefix',
+                        action='store_true', default=False,
+                        help='remove the time prefix from zsh history')
+
+    parser.add_argument('-r', '--regexp',
+                        action='store_true', default=False,
+                        help='start in regexp mode')
+
+    parser.add_argument('-a', '--case-sensitive',
+                        action='store_true', default=False,
+                        help='start in case-sensitive mode')
+
+    parser.add_argument('-d', '--remove-duplicates',
+                        action='store_true', default=False,
+                        help='remove duplicated lines')
+
+    parser.add_argument('-y', '--highlight-matches',
+                        action='store_true', default=False,
+                        help='highlight the part of each line which match the substrings or regexp')
+
+    parser.add_argument('--bash', action='store_true',
+                        default=False, help='standard for bash history search, same as -b -i -d')
+
+    parser.add_argument('--zsh', action='store_true',
+                        default=False, help='standard for zsh history search, same as -z -i -d')
+
+    parser.add_argument('infile', nargs='?',
+                        type=argparse.FileType('r'), default=sys.stdin,
+                        help='the file which lines you want to select eg. <(history)')
+
+    parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}',
+                        help='print selecta version')
 
     args = parser.parse_args()
 
@@ -466,7 +502,7 @@ def main():
         regexp=args.regexp,
         case_sensitive=args.case_sensitive,
         remove_duplicates=args.remove_duplicates,
-        show_matches=args.show_matches,
+        highlight_matches=args.highlight_matches,
         # TODO support missing options from the original selector
         # TODO directory history would be sweet!
     )
