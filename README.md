@@ -14,17 +14,17 @@ Just type some characters and see which entries match your words.
 
 You can search for whole sentences by prefixing your search with a double quote.
 
-Use up and down arrows to navigate the list.
+Use <kbd>up</kbd> and <kbd>down</kbd> arrows to navigate the list.
 
-Escape/Backspace on the result list returns to the search input.
+<kbd>Escape</kbd>/<kbd>Backspace</kbd> on the result list returns to the search input.
 
-Escape on the search input closes selecta.
+<kbd>Escape</kbd> on the search input closes selecta.
 
-Press enter to copy the selected entry to the console.
+Press <kbd>Enter</kbd> to copy the selected entry to the console.
 
-CTRL+a: toggle case sensitivity
+<kbd>CTRL+a</kbd> toggles case sensitivity
 
-CTRL+r: toggle REGEX search
+<kbd>CTRL+r</kbd> toggles regex search
 
 Installation
 ============
