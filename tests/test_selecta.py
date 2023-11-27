@@ -8,7 +8,7 @@ class TestSelecta(unittest.TestCase):
         super(TestSelecta, self).__init__(*args, **kwargs)
 
     def run_test(self, file, input, reverse_order=False, remove_bash_prefix=False, remove_zsh_prefix=False,
-                 regexp=False, case_sensitive=False, remove_duplicates=False, show_matches=False):
+                 regexp=False, case_sensitive=False, remove_duplicates=False, highlight_matches=False):
 
         with open(Path(__file__).parent / 'data' / file, 'r') as fh:
             selecta = Selecta(
@@ -19,7 +19,7 @@ class TestSelecta(unittest.TestCase):
                 regexp=regexp,
                 case_sensitive=case_sensitive,
                 remove_duplicates=remove_duplicates,
-                show_matches=show_matches,
+                highlight_matches=highlight_matches,
                 test_mode=True,
             )
 
