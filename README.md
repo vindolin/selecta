@@ -10,11 +10,15 @@ This is a Python3 clone of François Fleuret's excellent [selector](https://fleu
 
 Usage
 =====
+Just type some characters and see which entries match your words.
+
 You can search for whole sentences by prefixing your search with a double quote.
 
+Use up and down arrows to navigate the list.
 
-Hotkeys
-=======
+Escape/Backspace returns to the search input.
+
+Press enter to copy the selected entry to the console.
 
 CTRL+a: toggle case sensitivity
 
