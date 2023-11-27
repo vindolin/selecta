@@ -3,53 +3,47 @@ selecta - Interactively search and select entries from your bash/zsh history.
 
 [![Python package](https://github.com/vindolin/selecta/actions/workflows/python-package.yml/badge.svg?branch=master)](https://github.com/vindolin/selecta/actions/workflows/python-package.yml)
 
-This is a Python3 clone of François Fleuret's excellent `selector
-<http://www.idiap.ch/~fleuret/software.html#selector/>`_ tool.
+This is a Python3 clone of François Fleuret's excellent [selector](https://fleuret.org/cgi-bin/gitweb/gitweb.cgi?p=selector.git;a=summary) tool.
 
-.. image:: https://raw.githubusercontent.com/vindolin/selecta/master/screencast.gif
-   :width: 749
-   :alt: Screencast
-   :target: https://raw.githubusercontent.com/vindolin/selecta/master/screencast.gif
+[![Screencast](https://raw.githubusercontent.com/vindolin/selecta/master/screencast.gif)](https://raw.githubusercontent.com/vindolin/selecta/master/screencast.gif)
 
 
 Usage
--------
+=====
 You can search for whole sentences by prefixing your search with a double quote.
 
 
 Hotkeys
--------
+=======
 
 CTRL+a: toggle case sensitivity
 
 CTRL+r: toggle REGEX search
 
 Installation
-------------
+============
 
-::
-
+```shell
     $ pip install selecta
-
+```
 Install the keyboard shortcut ALT+{key}:
 
-::
-
+```shell
     $ selecta_add_keybinding {the alt key you want to use}
+```
 
 This will append one of the following lines to your ~/.bashrc/zshrc:
 
-::
-
+```shell
     bind -x '"\C-[{key}":"\selecta --bash -y <(history)"'
     bindkey -s "^[{key}" "selecta --zsh -y <(history)^M"
+```
 
 
 --help output
 -------------
 
-.. code-block::
-
+```
     usage: selecta [-h] [-i] [-b] [-z] [-e] [-a] [-d] [-y] [--bash] [--zsh]
                    [infile]
 
@@ -71,6 +65,7 @@ This will append one of the following lines to your ~/.bashrc/zshrc:
                             substrings or regexp
       --bash                standard for bash history search, same as -b -i -d
       --zsh                 standard for zsh history search, same as -b -i -d
+```
 
 TODO
 ----
