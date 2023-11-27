@@ -9,6 +9,12 @@ This is a Python3 clone of François Fleuret's excellent `selector
    :alt: Screencast
    :target: https://raw.githubusercontent.com/vindolin/selecta/master/screencast.gif
 
+
+Usage
+-------
+You can search for whole sentences by prefixing your search with a double quote.
+
+
 Hotkeys
 -------
 
