@@ -1,9 +1,13 @@
 import argparse
 import os
 import string
-import subprocess
 
-command_tpl = r"""# selecta keybinding{n}bind -x '"\C-[{key}":"\selecta --bash -y <(history)"'"""
+from selecta import inject_command
+
+shells = {
+    'bash': {'command_tpl': r"""bind -x '"\C-[{key}":"\selecta --bash -y <(history)"'"""},
+    'zsh': {'command_tpl': r'''bindkey -s "^[{key}" "selecta --zsh -y <(history)^M"'''},
+}
 
 
 def main():
@@ -12,7 +16,12 @@ def main():
     parser.add_argument('key', type=str, choices=list(string.ascii_lowercase), help='Key for the bash hotkey binding')
     args = parser.parse_args()
 
-    command = command_tpl.format(n='\n', key=args.key)
+    shell = 'bash' if 'bash' in os.environ['SHELL'] else 'zsh'
+
+    if shell not in shells:
+        exit(f'Unsupported shell: {shell}')
+
+    command = shells[shell]['command_tpl'].format(n='\n', key=args.key)
 
     with open(os.path.join(os.path.expanduser("~"), '.bashrc'), 'r') as f:
         for line in f:
@@ -24,8 +33,9 @@ def main():
     if not already_there:
         with open(os.path.join(os.path.expanduser("~"), '.bashrc'), 'a+') as f:
             # append hotkey binding to .bashrc
-            f.write(f'\n{command}\n')
-            subprocess.call(command, shell=True)
+            f.write(f'\n# selecta keybinding\n{command}\n')
+            inject_command(f' {command}\n')
+
             print('keybinding has been appended to .bashrc')
 
 

@@ -15,6 +15,13 @@ __version__ = '0.2.0'
 __all__ = []
 
 
+def inject_command(command):
+    """Inject the line into the terminal."""
+    fd = sys.stdin.fileno()
+    for c in (struct.pack('B', c) for c in os.fsencode(command)):
+        fcntl.ioctl(fd, termios.TIOCSTI, c)
+
+
 def debug(value, prefix=''):
     """only usded when debugging"""
     with codecs.open('/tmp/selecta.log', 'a', encoding='utf-8') as file:
@@ -392,7 +399,7 @@ class Selecta(object):
             self.view.set_header(urwid.AttrMap(
                 urwid.Text(f'selected: {line}'), 'head'))
 
-            self.inject_line(line)
+            inject_command(line)
             raise urwid.ExitMainLoop()
 
         elif input_ == 'ctrl a':
@@ -415,12 +422,6 @@ class Selecta(object):
             self.view.set_focus('header')
 
         return False
-
-    def inject_line(self, command):
-        """Inject the line into the terminal."""
-        fd = sys.stdin.fileno()
-        for c in (struct.pack('B', c) for c in os.fsencode(command)):
-            fcntl.ioctl(fd, termios.TIOCSTI, c)
 
 
 def main():
