@@ -29,13 +29,21 @@ class TestSelecta(unittest.TestCase):
 
             return selecta
 
-    def test_words_default(self):
+    def test_words_default_rd(self):
         selecta = self.run_test('tests/test.txt', 'app bana', remove_duplicates=True)
         self.assertEqual(selecta.matching_line_count, 2)
+
+    def test_words_default_nrd(self):
+        selecta = self.run_test('tests/test.txt', 'app bana')
+        self.assertEqual(selecta.matching_line_count, 3)
 
     def test_words_case_sensitive(self):
         selecta = self.run_test('tests/test.txt', 'Orange', case_sensitive=True, remove_duplicates=True)
         self.assertEqual(selecta.matching_line_count, 1)
+
+    def test_baz(self):
+        selecta = self.run_test('tests/test.txt', 'baz')
+        self.assertEqual(selecta.matching_line_count, 0)
 
     def test_regex_default(self):
         selecta = self.run_test('tests/test.txt', 'Or.+bana', regexp=True, case_sensitive=True, remove_duplicates=True)
@@ -44,3 +52,7 @@ class TestSelecta(unittest.TestCase):
     def test_bash_prefix(self):
         selecta = self.run_test('tests/test_history.txt', r'^[^\d]+$', regexp=True, remove_bash_prefix=True, remove_duplicates=True)
         self.assertEqual(selecta.matching_line_count, 4)
+
+    def test_empty_file(self):
+        selecta = self.run_test('tests/test_empty.txt', 'foo')
+        self.assertEqual(selecta.matching_line_count, 0)

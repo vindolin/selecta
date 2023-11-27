@@ -1,5 +1,0 @@
-apple orange cherry apple banana banana pear
-apple orange cherry apple banana banana pear
-orange cherry apple banana banana pear apple
-strawberry
-blau grün gelb rot
