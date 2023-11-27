@@ -147,8 +147,7 @@ class SearchEdit(urwid.Edit):
             urwid.emit_signal(self, 'done', self.get_edit_text())
             return
         elif key == 'esc':
-            urwid.emit_signal(self, 'done', None)
-            return
+            raise urwid.ExitMainLoop()
         elif key == 'ctrl a':
             urwid.emit_signal(self, 'toggle_case_modifier')
             urwid.emit_signal(self, 'change', self, self.get_edit_text())
@@ -421,7 +420,7 @@ class Selecta(object):
             self.view.set_focus('header')
 
         elif input_ == 'esc':
-            raise urwid.ExitMainLoop()
+            self.view.set_focus('header')
 
         elif len(input_) == 1:  # ignore things like tab, enter
             self.search_edit.set_edit_text(self.search_edit.get_text()[0] + input_)
