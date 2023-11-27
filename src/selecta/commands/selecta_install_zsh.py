@@ -3,7 +3,7 @@ import os
 import string
 import subprocess
 
-command_tpl = r'bindkey -s "^[{key}" "selecta --zsh -y <(history)^M"'
+command_tpl = r'''# selecta keybinding{n}bindkey -s "^[{key}" "selecta --zsh -y <(history)^M"'''
 
 
 def main():
@@ -12,7 +12,7 @@ def main():
     parser.add_argument('key', type=str, choices=list(string.ascii_lowercase), help='Key for the zsh hotkey binding')
     args = parser.parse_args()
 
-    command = command_tpl.format(key=args.key)
+    command = command_tpl.format(n='\n', key=args.key)
 
     with open(os.path.join(os.path.expanduser("~"), '.zshrc'), 'r') as f:
         for line in f:
