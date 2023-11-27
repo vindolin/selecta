@@ -29,20 +29,27 @@ Press <kbd>Enter</kbd> to copy the selected entry to the console.
 Installation
 ============
 
-```shell
-    $ pip install selecta
+```console
+pip install selecta
 ```
 Install the keyboard shortcut ALT+{key}:
 
-```shell
-    $ selecta_add_keybinding {the alt key you want to use}
+```console
+selecta_add_keybinding {the alt key you want to use}
 ```
 
 This will append one of the following lines to your ~/.bashrc/zshrc:
 
-```shell
-    bind -x '"\C-[{key}":"\selecta --bash -y <(history)"'
-    bindkey -s "^[{key}" "selecta --zsh -y <(history)^M"
+```console
+bind -x '"\C-[{key}":"\selecta --bash -y <(history)"'
+bindkey -s "^[{key}" "selecta --zsh -y <(history)^M"
+```
+
+Upgrade from older version to 0.2.0
+-----------------------------------
+Delete your old keybinding from .bashrc/.zshrc and register the new version with:
+```console
+selecta_add_keybinding
 ```
 
 
