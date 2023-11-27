@@ -1,6 +1,7 @@
 import argparse
 import os
 import string
+import subprocess
 
 command_tpl = r"""bind -x '"\C-[{key}":"\selecta --bash -y <(history)"'"""
 
@@ -24,6 +25,7 @@ def main():
         with open(os.path.join(os.path.expanduser("~"), '.bashrc'), 'a+') as f:
             # append hotkey binding to .bashrc
             f.write('\n{}\n'.format(command))
+            subprocess.call(command, shell=True)
             print('keybinding has been appended to .bashrc')
 
 

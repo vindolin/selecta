@@ -1,6 +1,7 @@
 import argparse
 import os
 import string
+import subprocess
 
 command_tpl = r'bindkey -s "^[{key}" "selecta --zsh -y <(history)^M"'
 
@@ -24,6 +25,7 @@ def main():
         with open(os.path.join(os.path.expanduser("~"), '.zshrc'), 'a+') as f:
             # append hotkey binding to .zshrc
             f.write('\n{}\n'.format(command))
+            subprocess.call(command, shell=True)
             print('keybinding has been appended to .zshrc')
 
 
