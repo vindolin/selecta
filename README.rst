@@ -9,18 +9,10 @@ This is a Python3 clone of François Fleuret's excellent `selector
    :alt: Screencast
    :target: https://raw.githubusercontent.com/vindolin/selecta/master/screencast.gif
 
-
-Usage
------
-
-::
-
-    $ selecta --bash -y <(history)
-
 Hotkeys
 -------
 
-CTRL+i: toggle case sensitivity
+CTRL+a: toggle case sensitivity
 
 CTRL+r: toggle REGEX search
 
@@ -29,19 +21,20 @@ Installation
 
 ::
 
-    $ sudo pip3 install selecta
+    $ pip install selecta
 
-Install the keyboard shortcut ALT+r:
-
-::
-
-    $ selecta_install_bash
-
-This will append the following line to your ~/.bashrc:
+Install the keyboard shortcut ALT+{key}:
 
 ::
 
-    bind '"\C-[r":"\C-a\C-k selecta --bash -y <(history)\C-m"'
+    $ selecta_add_keybinding {the alt key you want to use}
+
+This will append one of the following lines to your ~/.bashrc/zshrc:
+
+::
+
+    bind -x '"\C-[{key}":"\selecta --bash -y <(history)"'
+    bindkey -s "^[{key}" "selecta --zsh -y <(history)^M"
 
 
 --help output
@@ -57,7 +50,7 @@ This will append the following line to your ~/.bashrc:
 
     optional arguments:
       -h, --help            show this help message and exit
-      -i, --revert-order    revert the order of the lines
+      -i, --reverse-order   reverse the order of the lines
       -b, --remove-bash-prefix
                             remove the numeric prefix from bash history
       -z, --remove-zsh-prefix
@@ -66,7 +59,7 @@ This will append the following line to your ~/.bashrc:
       -a, --case-sensitive  start in case-sensitive mode
       -d, --remove-duplicates
                             remove duplicated lines
-      -y, --show-hits       highlight the part of each line which match the
+      -y, --show-matches    highlight the part of each line which matches the
                             substrings or regexp
       --bash                standard for bash history search, same as -b -i -d
       --zsh                 standard for zsh history search, same as -b -i -d
