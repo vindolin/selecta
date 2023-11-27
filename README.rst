@@ -1,6 +1,8 @@
 selecta - Interactively search and select entries from your bash/zsh history.
 -----------------------------------------------------------------------------
 
+[![Python package](https://github.com/vindolin/selecta/actions/workflows/python-package.yml/badge.svg?branch=master)](https://github.com/vindolin/selecta/actions/workflows/python-package.yml)
+
 This is a Python3 clone of François Fleuret's excellent `selector
 <http://www.idiap.ch/~fleuret/software.html#selector/>`_ tool.
 
