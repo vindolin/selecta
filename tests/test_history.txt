@@ -1,0 +1,5 @@
+    1  mkdir good_ideas
+    2  echo "go fly">good_ideas/ideas.txt
+    3  mc
+    4  ls -lah
+    5  mc
