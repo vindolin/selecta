@@ -40,7 +40,7 @@ palette = [
     ('line_focus', '', '', '', '#000', '#da0'),
 ]
 
-signal.signal(signal.SIGINT, lambda *_: sys.exit(0))  # die with style
+signal.signal(signal.SIGINT, lambda *_: sys.exit(0))  # perish in style
 
 
 class ItemWidget(urwid.WidgetWrap):
