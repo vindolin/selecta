@@ -54,6 +54,10 @@ class TestSelecta(unittest.TestCase):
         selecta = self.run_test('test_history.txt', r'^[^\d]+$', regexp=True, remove_bash_prefix=True, remove_duplicates=True)
         self.assertEqual(selecta.matching_line_count, 4)
 
+    def test_sentence(self):
+        selecta = self.run_test('test.txt', '"orange cherry apple banana banana pe')
+        self.assertEqual(selecta.matching_line_count, 1)
+
     def test_empty_file(self):
         selecta = self.run_test('test_empty.txt', 'foo')
         self.assertEqual(selecta.matching_line_count, 0)
