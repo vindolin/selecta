@@ -434,7 +434,7 @@ def main():
     parser.add_argument('-d', '--remove-duplicates', action='store_true', default=False, help='remove duplicated lines')
     parser.add_argument('-y', '--show-matches', action='store_true', default=False, help='highlight the part of each line which match the substrings or regexp')
     parser.add_argument('--bash', action='store_true', default=False, help='standard for bash history search, same as -b -i -d')
-    parser.add_argument('--zsh', action='store_true', default=False, help='standard for zsh history search, same as -b -i -d')
+    parser.add_argument('--zsh', action='store_true', default=False, help='standard for zsh history search, same as -z -i -d')
     parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), default=sys.stdin, help='the file which lines you want to select eg. <(history)')
     parser.add_argument('-v', '--version', help='print selecta version', action='version', version=f'%(prog)s {__version__}')
 
