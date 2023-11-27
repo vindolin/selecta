@@ -16,7 +16,9 @@ You can search for whole sentences by prefixing your search with a double quote.
 
 Use up and down arrows to navigate the list.
 
-Escape/Backspace returns to the search input.
+Escape/Backspace on the result list returns to the search input.
+
+Escape on the search input closes selecta.
 
 Press enter to copy the selected entry to the console.
 
