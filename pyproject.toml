@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "selecta"
-version = "0.2.1"
+version = "0.2.0"
 authors = [
   {name="Thomas Schüßler", email="vindolin@gmail.com" },
 ]
@@ -15,18 +15,18 @@ description = "Interactively select an entry from your bash/zsh history."
 readme = "README.rst"
 requires-python = ">=3.9"
 classifiers = [
-  'Development Status :: 5 - Production/Stable',
-  'Environment :: Console :: Curses',
-  'Programming Language :: Python :: 3',
-]
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Console :: Curses",
+  "Programming Language :: Python :: 3",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux"]
 keywords = [
-  'bash', 'zsh', 'curses', 'history'
+  "bash", "zsh", "curses", "history"
 ]
 
 [project.urls]
 "Homepage" = "https://github.com/vindolin/selecta"
 
 [project.scripts]
-selecta = 'selecta:main'
-selecta_install_bash = 'selecta.commands.selecta_install_bash:main'
-selecta_install_zsh = 'selecta.commands.selecta_install_zsh:main'
+selecta = "selecta:main"
+selecta_add_keybinding = "selecta.commands.selecta_add_keybinding:main"
