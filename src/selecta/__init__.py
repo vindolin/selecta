@@ -231,7 +231,7 @@ class Selecta(object):
         # find out what this pylint error means (happens from >=2.2.0)
         # Cannot access member "set_terminal_properties" for type "BaseScreen" Member "set_terminal_properties" is unknown
         # it doesn't seem to be a problem though
-        self.loop.screen.set_terminal_properties(colors=256)
+        self.loop.screen.set_terminal_properties(colors=256)  # type: ignore - make pylance happy
         # self.loop.screen.set_terminal_properties(colors=2**24)
 
         self.update_list('')
