@@ -2,12 +2,15 @@
 
 import codecs
 import fcntl
+from io import TextIOWrapper
 import os
 import re
 import signal
 import struct
 import sys
 import termios
+from typing import Union
+
 import urwid
 
 __version__ = '0.2.0'
@@ -15,14 +18,14 @@ __version__ = '0.2.0'
 __all__ = []
 
 
-def inject_command(command):
+def inject_command(command: str) -> None:
     """Inject the line into the terminal."""
     fd = sys.stdin.fileno()
     for c in (struct.pack('B', c) for c in os.fsencode(command)):
         fcntl.ioctl(fd, termios.TIOCSTI, c)
 
 
-def debug(value, prefix=''):
+def debug(value, prefix: str = '') -> None:
     """only usded when debugging"""
     with codecs.open('/tmp/selecta.log', 'a', encoding='utf-8') as file:
         file.write(f'{prefix} {value}\n')
@@ -45,16 +48,16 @@ signal.signal(signal.SIGINT, lambda *_: sys.exit(0))  # perish in style
 
 class ItemWidget(urwid.WidgetWrap):
     """Base for a widget for a single line in the listbox."""
-    def selectable(self):
+    def selectable(self) -> bool:
         return True
 
-    def keypress(self, _, key):
+    def keypress(self, _, key: str) -> str:
         return key
 
 
 class ItemWidgetPlain(ItemWidget):
     """Widget that displays a line as is."""
-    def __init__(self, line):
+    def __init__(self, line: str) -> None:
         self.line = line
         text = urwid.AttrMap(urwid.Text(self.line), 'line', 'line_focus')
         super().__init__(text)
@@ -62,7 +65,7 @@ class ItemWidgetPlain(ItemWidget):
 
 class ItemWidgetStartswith(ItemWidget):
     """Widget that displays a line as is."""
-    def __init__(self, line, search_text):
+    def __init__(self, line: str, search_text: str) -> None:
         self.line = line
         parts = [('match', part) if part == search_text else part
                  for part in re.split(f'({re.escape(search_text)})', self.line)]
@@ -72,7 +75,7 @@ class ItemWidgetStartswith(ItemWidget):
 
 class ItemWidgetPattern(ItemWidget):
     """Widget that highlights the matching part of a line."""
-    def __init__(self, line, match):
+    def __init__(self, line: str, match: str) -> None:
         self.line = line
 
         # highlight the matches
@@ -90,8 +93,8 @@ class ItemWidgetPattern(ItemWidget):
         super().__init__(text)
 
 
-def mark_parts(subject_string, s_words, case_sensitive, highlight_matches):
-    def wrap_part(part):
+def mark_parts(subject_string: str, s_words: list[str], case_sensitive: bool, highlight_matches: bool) -> list[Union[str, tuple]]:
+    def wrap_part(part) -> Union[str, tuple]:
         return ('match', part) if highlight_matches else part
 
     flags = re.IGNORECASE if not case_sensitive else 0
@@ -122,7 +125,7 @@ def mark_parts(subject_string, s_words, case_sensitive, highlight_matches):
 
 class ItemWidgetWords(ItemWidget):
     """Widget that highlights the matching words of a line."""
-    def __init__(self, line, search_words, case_modifier, highlight_matches):
+    def __init__(self, line, search_words, case_modifier, highlight_matches) -> None:
         self.line = line
 
         text = urwid.AttrMap(
@@ -132,7 +135,7 @@ class ItemWidgetWords(ItemWidget):
         )
         super().__init__(text)
 
-    def split_words(self, words, subject):
+    def split_words(self, words, subject) -> list[str]:
         """Split the subject into pieces for later styling."""
         return [word for word in re.split(rf"({'|'.join(words)})", subject) if word]
 
@@ -142,7 +145,7 @@ class SearchEdit(urwid.Edit):
 
     signals = ['done', 'toggle_regexp_modifier', 'toggle_case_modifier']
 
-    def keypress(self, size, key):
+    def keypress(self, size, key) -> None:
         if key == 'enter':
             urwid.emit_signal(self, 'done', self.get_edit_text())
             return
@@ -167,11 +170,11 @@ class ResultList(urwid.ListBox):
     """List of the found lines."""
     signals = ['resize']
 
-    def __init__(self, *args):
+    def __init__(self, *args) -> None:
         self.last_size = None
         urwid.ListBox.__init__(self, *args)
 
-    def render(self, size, focus=False):
+    def render(self, size, focus=False) -> urwid.CompositeCanvas | urwid.SolidCanvas:
         if size != self.last_size:
             self.last_size = size
             urwid.emit_signal(self, 'resize', size)
@@ -180,11 +183,11 @@ class ResultList(urwid.ListBox):
 
 class LineCountWidget(urwid.Text):
     """Widget that displays the number of matching lines / total lines."""
-    def __init__(self, line_count=0):
+    def __init__(self, line_count: int = 0) -> None:
         super().__init__('')
         self.line_count = line_count
 
-    def update(self, matching_line_count):
+    def update(self, matching_line_count) -> None:
         """Update the widget with the current number of matching lines."""
         self.set_text(f'{matching_line_count}/{self.line_count}')
 
@@ -192,17 +195,12 @@ class LineCountWidget(urwid.Text):
 class Selecta(object):
     """The main class of Selecta."""
 
-    highlight_matches = False
-    regexp_modifier = False
-    case_modifier = False
+    line_widgets: list = [urwid.Widget]
 
-    matching_line_count = 0
-    line_widgets = []
-    lines = []
-
-    def __init__(self, infile, reverse_order=False,
-                 remove_bash_prefix=False, remove_zsh_prefix=False, regexp=False, case_sensitive=False,
-                 remove_duplicates=False, highlight_matches=False, test_mode=False):
+    def __init__(self, infile, reverse_order: bool,
+                 remove_bash_prefix: bool = False, remove_zsh_prefix: bool = False,
+                 regexp: bool = False, case_sensitive: bool = False, remove_duplicates: bool = False,
+                 highlight_matches: bool = False, test_mode: bool = False) -> None:
 
         self.highlight_matches = highlight_matches
         self.regexp_modifier = regexp
@@ -221,7 +219,7 @@ class Selecta(object):
             ('pack', self.line_count_display),
         ], dividechars=1, focus_column=0), 'head', 'head')
 
-        self.item_list = urwid.SimpleListWalker(self.line_widgets)
+        self.item_list: urwid.SimpleListWalker = urwid.SimpleListWalker(self.line_widgets)
         self.listbox = ResultList(self.item_list)
         self.view = urwid.Frame(body=self.listbox, header=header)
 
@@ -250,11 +248,11 @@ class Selecta(object):
         if not test_mode:
             self.loop.run()
 
-    def parse_lines(self, infile, reverse_order,
-                    remove_bash_prefix, remove_zsh_prefix, remove_duplicates):
+    def parse_lines(self, infile: TextIOWrapper, reverse_order: bool,
+                    remove_bash_prefix: bool, remove_zsh_prefix: bool, remove_duplicates: bool) -> list[str]:
         """Get the lines from the infile."""
 
-        lines = []
+        lines: list[str] = []
         if reverse_order:
             lines_ = reversed(infile.readlines())
         else:
@@ -267,7 +265,7 @@ class Selecta(object):
                 try:
                     line = line.split(None, 1)[1]
                 except IndexError:
-                    pass
+                    pass  # ignore lines without prefix
 
             # zsh legacy line = re.split(r'\s+', line, maxsplit=4)[-1]
 
@@ -277,34 +275,37 @@ class Selecta(object):
             lines.append(line)
 
         return lines
+    # [ItemWidgetPlain(line) for line in self.lines]
 
-    def update_item_list(self, items):
+    def update_item_list(self, items: list) -> None:
         """Update the list of items."""
         self.item_list[:] = items  # itemList is a SimpleListWalker which monitors the list for changes
         self.matching_line_count = len(self.item_list)
         self.line_count_display.update(self.matching_line_count)
 
-    def list_resize(self, size):
-        pass
+    def list_resize(self, size) -> None:
+        """get's called when the window is resized"""
 
-    def toggle_modifier(self, modifier):
+    def toggle_modifier(self, modifier) -> None:
         setattr(self, modifier, not getattr(self, modifier))
         self.update_modifiers()
 
-    def update_modifiers(self):
+    def update_modifiers(self) -> None:
         """Update the modifier display"""
-        modifiers = []
+        modifiers: list = []
         if self.regexp_modifier:
             modifiers.append('regexp')
         if self.case_modifier:
             modifiers.append('case')
+        # if self.fuzzy_modifier:
+        #     modifiers.append('fuzzy')
 
         if len(modifiers) > 0:
             self.modifier_display.set_text(f'[{", ".join(modifiers)}]')
         else:
             self.modifier_display.set_text('')
 
-    def filter_regex(self, pattern):
+    def filter_regex(self, pattern: str) -> list:
         """Filter the list with a regular expression."""
 
         flags = re.IGNORECASE if not self.case_modifier else 0
@@ -312,8 +313,8 @@ class Selecta(object):
         try:
             re_search = re.compile(pattern, flags).search
 
-            items = []
             if False:
+                items = []
                 for line in self.lines:
                     match = re_search(line)
                     if match:
@@ -335,10 +336,10 @@ class Selecta(object):
         except re.error as err:
             return [urwid.Text(('empty_list', f'Error in regular epression: {err}'))]
 
-    def filter_words(self, search_text):
+    def filter_words(self, search_text: str) -> list[urwid.Widget]:
         """Filter the list with a list of words."""
 
-        def check_all_words(subject, words):
+        def check_all_words(subject, words) -> bool:
             """Check if all words are in the subject."""
             if False:
                 if not self.case_modifier:
@@ -351,11 +352,12 @@ class Selecta(object):
                         if not self.case_modifier else all(word in subject for word in words))
 
         words = search_text.split()
+
         return [ItemWidgetWords(line, search_words=words,
                                 case_modifier=self.case_modifier, highlight_matches=self.highlight_matches)
                 for line in self.lines if check_all_words(line, words)]
 
-    def update_list(self, search_text=''):
+    def update_list(self, search_text: str = '') -> None:
         """Filter the list with the given search criteria."""
 
         # show all lines if search_text is empty
@@ -384,17 +386,17 @@ class Selecta(object):
 
         self.item_list.set_focus(0)
 
-    def edit_change(self, _, search_text):
+    def edit_change(self, _, search_text) -> None:
         self.update_list(search_text)
 
-    def edit_done(self, _):
+    def edit_done(self, _) -> None:
         self.view.focus_position = 'body'
 
-    def on_unhandled_input(self, input_):
-        if isinstance(input_, tuple):  # mouse events
+    def on_unhandled_input(self, input) -> bool:
+        if isinstance(input, tuple):  # mouse events
             return False
 
-        if input_ == 'enter':
+        if input == 'enter':
             focused_widget = self.listbox.get_focus()[0]
 
             if focused_widget is None:
@@ -411,29 +413,32 @@ class Selecta(object):
             inject_command(line)
             raise urwid.ExitMainLoop()
 
-        elif input_ == 'ctrl a':
+        elif input == 'ctrl a':
             self.toggle_modifier('case_modifier')
 
-        elif input_ == 'ctrl r':
+        elif input == 'ctrl r':
             self.toggle_modifier('regexp_modifier')
 
-        elif input_ == 'backspace':
+        # elif input_ == 'ctrl f':
+        #     self.toggle_modifier('fuzzy_modifier')
+
+        elif input == 'backspace':
             self.search_edit.set_edit_text(self.search_edit.get_text()[0][:-1])
             self.search_edit.set_edit_pos(len(self.search_edit.get_text()[0]))
             self.view.set_focus('header')
 
-        elif input_ == 'esc':
+        elif input == 'esc':
             self.view.set_focus('header')
 
-        elif len(input_) == 1:  # ignore things like tab, enter
-            self.search_edit.set_edit_text(self.search_edit.get_text()[0] + input_)
+        elif len(input) == 1:  # ignore things like tab, enter
+            self.search_edit.set_edit_text(self.search_edit.get_text()[0] + input)
             self.search_edit.set_edit_pos(len(self.search_edit.get_text()[0]))
             self.view.set_focus('header')
 
         return False
 
 
-def main():
+def main() -> None:
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--reverse-order',
