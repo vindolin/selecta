@@ -24,7 +24,7 @@ def main():
     if not already_there:
         with open(os.path.join(os.path.expanduser("~"), '.bashrc'), 'a+') as f:
             # append hotkey binding to .bashrc
-            f.write('\n{}\n'.format(command))
+            f.write(f'\n{command}\n')
             subprocess.call(command, shell=True)
             print('keybinding has been appended to .bashrc')
 
