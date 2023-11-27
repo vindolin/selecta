@@ -1,6 +1,7 @@
+from asyncio import FastChildWatcher
 import unittest
 from pathlib import Path
-from selecta import Selecta
+from selecta import Selecta, mark_parts
 
 
 class TestSelecta(unittest.TestCase):
@@ -61,3 +62,15 @@ class TestSelecta(unittest.TestCase):
     def test_empty_file(self):
         selecta = self.run_test('test_empty.txt', 'foo')
         self.assertEqual(selecta.matching_line_count, 0)
+
+    def test_mark_parts1(self):
+        parts = mark_parts('orange cherry Orange apple Banana banana Pear apple', ['bana', 'apple', 'pear'], case_sensitive=False, highlight_matches=True)
+        self.assertEqual(parts, ['orange cherry Orange ', ('match', 'apple'), ' ', ('match', 'Bana'), 'na ', ('match', 'bana'), 'na ', ('match', 'Pear'), ' ', ('match', 'apple')])
+
+    def test_mark_parts2(self):
+        parts = mark_parts('orange cherry Orange apple Banana banana Pear apple', ['cher', 'Bana'], case_sensitive=True, highlight_matches=True)
+        self.assertEqual(parts, ['orange ', ('match', 'cher'), 'ry Orange apple ', ('match', 'Bana'), 'na banana Pear apple'])
+
+    def test_mark_parts3(self):
+        parts = mark_parts('apple orange cherry apple banana banana pear', ['pear', 'banana'], case_sensitive=True, highlight_matches=True)
+        self.assertEqual(parts, ['apple orange cherry apple ', ('match', 'banana'), ' ', ('match', 'banana'), ' ', ('match', 'pear')])
