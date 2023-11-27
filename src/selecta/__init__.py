@@ -174,7 +174,7 @@ class ResultList(urwid.ListBox):
         self.last_size = None
         urwid.ListBox.__init__(self, *args)
 
-    def render(self, size, focus=False) -> urwid.CompositeCanvas | urwid.SolidCanvas:
+    def render(self, size, focus=False) -> Union[urwid.CompositeCanvas, urwid.SolidCanvas]:
         if size != self.last_size:
             self.last_size = size
             urwid.emit_signal(self, 'resize', size)
