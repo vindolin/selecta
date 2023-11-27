@@ -114,7 +114,7 @@ def mark_parts(subject_string, s_words, case_sensitive, highlight_matches):
             l_parts.append(wrap_part(word) if word_x in s_words_x else word)
     else:
         # use faster(?) list comprehension
-        l_parts = [wrap_part(word) if (word if highlight_matches else word.lower())
+        l_parts = [wrap_part(word) if (word if case_sensitive else word.lower())
                    in s_words_x else word for word in s_parts]
 
     return l_parts
@@ -264,7 +264,10 @@ class Selecta(object):
             line = line.strip()
             # remove bash/zsh line numbers from the beginning of the line
             if remove_bash_prefix or remove_zsh_prefix:
-                line = line.split(None, 1)[1]
+                try:
+                    line = line.split(None, 1)[1]
+                except IndexError:
+                    pass
 
             # zsh legacy line = re.split(r'\s+', line, maxsplit=4)[-1]
 
