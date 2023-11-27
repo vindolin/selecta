@@ -66,10 +66,3 @@ This will append one of the following lines to your ~/.bashrc/zshrc:
       --bash                standard for bash history search, same as -b -i -d
       --zsh                 standard for zsh history search, same as -b -i -d
 ```
-
-TODO
-----
-
-* Add the cd feature from selector.
-* Implement missing command line switches.
-* Add missing keyboard shortcuts
