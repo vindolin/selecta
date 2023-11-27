@@ -183,44 +183,25 @@ class LineCountWidget(urwid.Text):
         self.set_text(f'{matching_line_count}/{self.line_count}')
 
 
-class Selector(object):
+class Selecta(object):
     """The main class of Selecta."""
 
-    matching_line_count = 0
     show_matches = False
     regexp_modifier = False
     case_modifier = False
-    remove_bash_prefix = False
+
+    matching_line_count = 0
     line_widgets = []
     lines = []
 
-    def __init__(self, revert_order, remove_bash_prefix, remove_zsh_prefix, regexp, case_sensitive,
-                 remove_duplicates, show_matches, infile):
+    def __init__(self, infile, reverse_order=False, remove_bash_prefix=False, remove_zsh_prefix=False, regexp=False, case_sensitive=False,
+                 remove_duplicates=False, show_matches=False, test_mode=False):
 
         self.show_matches = show_matches
         self.regexp_modifier = regexp
         self.case_modifier = case_sensitive
-        self.remove_bash_prefix = remove_bash_prefix
 
-        if revert_order:
-            lines = reversed(infile.readlines())
-        else:
-            lines = infile
-
-        for line in lines:
-            line = line.strip()
-            if remove_bash_prefix:
-                line = line.split(None, 1)[1]
-
-            if remove_zsh_prefix:
-                line = line.split(None, 1)[1]
-                # legacy line = re.split(r'\s+', line, maxsplit=4)[-1]
-
-            if remove_duplicates and line in self.lines:
-                continue
-
-            self.lines.append(line)
-
+        self.lines = self.parse_lines(infile, reverse_order, remove_bash_prefix, remove_zsh_prefix, remove_duplicates)
         self.matching_line_count = len(self.lines)
 
         self.search_edit = SearchEdit(edit_text='')
@@ -253,10 +234,34 @@ class Selector(object):
         self.loop.screen.set_terminal_properties(colors=256)
         # self.loop.screen.set_terminal_properties(colors=2**24)
 
-        self.line_count_display.update(self.matching_line_count)
         self.update_list('')
 
-        self.loop.run()
+        if not test_mode:
+            self.loop.run()
+
+    def parse_lines(self, infile, reverse_order, remove_bash_prefix, remove_zsh_prefix, remove_duplicates):
+        """Get the lines from the infile."""
+
+        lines = []
+        if reverse_order:
+            lines_ = reversed(infile.readlines())
+        else:
+            lines_ = infile
+
+        for line in lines_:
+            line = line.strip()
+            # remove bash/zsh line numbers from the beginning of the line
+            if remove_bash_prefix or remove_zsh_prefix:
+                line = line.split(None, 1)[1]
+
+            # zsh legacy line = re.split(r'\s+', line, maxsplit=4)[-1]
+
+            if remove_duplicates and line in lines:
+                continue
+
+            lines.append(line)
+
+        return lines
 
     def update_item_list(self, items):
         """Update the list of items."""
@@ -367,7 +372,7 @@ class Selector(object):
         self.update_list(search_text)
 
     def edit_done(self, _):
-        self.view.set_focus('body')
+        self.view.focus_position = 'body'
 
     def on_unhandled_input(self, input_):
         if isinstance(input_, tuple):  # mouse events
@@ -421,7 +426,7 @@ class Selector(object):
 def main():
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--revert-order', action='store_true', default=False, help='revert the order of the lines')
+    parser.add_argument('-i', '--reverse-order', action='store_true', default=False, help='reverse the order of the lines')
     parser.add_argument('-b', '--remove-bash-prefix', action='store_true', default=False, help='remove the numeric prefix from bash history')
     parser.add_argument('-z', '--remove-zsh-prefix', action='store_true', default=False, help='remove the time prefix from zsh history')
     parser.add_argument('-r', '--regexp', action='store_true', default=False, help='start in regexp mode')
@@ -449,18 +454,18 @@ def main():
         args.remove_zsh_prefix = True
 
     if args.bash or args.zsh:
-        args.revert_order = True
+        args.reverse_order = True
         args.remove_duplicates = True
 
-    Selector(
-        revert_order=args.revert_order,
+    Selecta(
+        infile=args.infile,
+        reverse_order=args.reverse_order,
         remove_bash_prefix=args.remove_bash_prefix,
         remove_zsh_prefix=args.remove_zsh_prefix,
         regexp=args.regexp,
         case_sensitive=args.case_sensitive,
         remove_duplicates=args.remove_duplicates,
         show_matches=args.show_matches,
-        infile=args.infile,
         # TODO support missing options from the original selector
         # TODO directory history would be sweet!
     )
