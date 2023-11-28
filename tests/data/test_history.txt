@@ -1,0 +1,121 @@
+   1  pip install paho.mqtt
+   2  mkvirtualenv --python=`which python3` prusa2mqtt
+   3  python prusa2mqtt/prusa2mqtt/main.py --mqtt_port=1884
+   4  pip install twine
+   5  pip install --no-cache-dir -U "selecta @ git+https://github.com/vindolin/selecta@0.2.0"
+   6  ls /dev/usb*
+   7  mc
+   8  nala install mpv
+   9  ~/.virtualenvs/beehive12/bin/python ~/projects/beehive12/influxer/influxer.py
+  10  cd projects/grafana_plugins/
+  11  ls
+  12  npm install -g grunt-cli
+  13  wget https://assets.mixkit.co/active_storage/sfx/3069/3069.wav
+  14  mv 3069.wav pop.wav
+  15  ffmpeg -i pop.wav -filter:a "volume=0.5" pop50.wav
+  16  sudo systemctl restart grafana.service
+  17  tail /var/log/grafana/grafana.log
+  18  influx -username admin -password j3OPIJ3ojojo3ijO4Ojojo -execute 'show databases'
+  19  sudo su -
+  20  python -m serial.tools.miniterm /dev/ttyACM0 115200
+  21  cd mnt
+  22  twine upload -r testpypi dist/prusa2mqtt-0.2-py3-none-any.whl
+  23  mkdir old
+  24  mount /dev/sdb2 old/
+  25  sudo mcedit /etc/influxdb/influxdb.conf
+  26  sudo shutdown now
+  27  which python
+  28  ifconfig
+  29  ping 192.166.174.37
+  30  sudo systemctl stop zigbee2mqtt
+  31  ping 192.166.174.37
+  32  sudo nala update
+  33  sudo nala upgrade
+  34  sudo ifconfig eth0 down
+  35  sudo service nodered start
+  36  sudo journalctl -u nodered
+  37  cat /opt/zigbee2mqtt/data/database.db
+  38  ffmpeg -y -i rtsp://guest:fakepass@192.166.174.118:5518  -rtsp_transport tcp -vframes 1 do.jpg
+  39  ffplay -nodisp -autoexit cashregister.mp3
+  40  mcedit playsound.sh
+  41  ping dock
+  42  git checkout HEAD -- npm-shrinkwrap.json
+  43  chmod +x clean_retained.sh
+  44  ~/.virtualenvs/prusa2mqtt/bin/python3 ~/projects/prusa2mqtt/prusa2mqtt/main.py --mqtt_port=1884
+  45  sudo systemctl restart telegraf.service
+  46  alsamixer
+  47  mosquitto_sub -u fakeuser -P fakepass(* -t instar/39003jj3oj3o/status/alarm/actions/objects/poll/moving
+  48  workon setuptest
+  49  cat mosquitto_db_dump
+  50  tail /var/log/AdGuardHome.out
+  51  mcedit docker-compose.yml
+  52  sudo tail -f /var/log/mosquitto/mosquitto.log|grep 11
+  53  sudo lsblk -o NAME,FSTYPE,SIZE,MOUNTPOINT,LABEL
+  54  npm list
+  55  mv html5video_template.html index.html
+  56  sudo mcedit /boot/config.txt
+  57  gatttool -b -l
+  58  ls /etc/letsencrypt/live/home.fakeserver.de
+  59  docker logs fe6b99861cc1
+  60  sudo updatedb
+  61  locate settings.js
+  62  tar -C /tmp/ -f ~/Downloads/AdGuardHome_linux_amd64.tar.gz -x -v -z
+  63  docker run -t mrelay -d -p 54017:54321 relay "http://guest:fakepass@192.166.174.140/livestream/13?action=play&media=mjpeg&user=guest&pwd=fakepass"
+  64  python http_relay.py -i 0.0.0.0 -p 8000 -t http://pi4c:1880 -s /camrelay
+  65  mosquitto_pub --cafile ca/ca.crt --cert ca/client.crt --key ca/client.key -d -h fakeuser -p 1886 -t test -m "flunk!"
+  66  sudo systemctl reload dbus.service
+  67  gst-launch-1.0 -v playbin uri=rtsp://guest:x6F2V2RT2LrKbs3@home.fakeserver.de:5541/13 uridecodebin0::source::latency=300
+  68  sudo usermod -G bluetooth -a fakeuser
+  69  git clone https://github.com/rhasspy/piper
+  70  cd piper
+  71  sudo nala install bluez-hcidump
+  72  mcedit /etc/network/interfaces
+  73  cat MANIFEST.in
+  74  echo 'Welcome to the world of speech synthesis!' | piper --model en_US-danny-low --output-raw --data-dir ~/piper | aplay -r 22050 -f S16_LE -t raw
+  75  npm run css-build -- --watch
+  76  sudo dmesg
+  77  workon ninepatch
+  78  python main.py -a"192.166.174.31" -ttripower -p502 -i3 -u3 34621
+  79  git diff ninepatch
+  80  sudo mcedit /boot/config.txt
+  81  bluetoothctl --help
+  82  pip freeze >requirements.txt
+  83  pip install flask
+  84  pip install ninepatch
+  85  pip install selecta
+  86  supervisord --help
+  87  flask run --help
+  88  npm audit fix --force
+  89  deactivate
+  90  flask --app app/app run --host=0.0.0.0
+  91  npm i --package-lock-only
+  92  git branch -M main
+  93  docker compose up
+  94  swapon --show
+  95  gst-launch-1.0 -v playbin uri=rtsp://guest:x6F2V2RT2LrKbs3@home.fakeserver.de:5541/13 uridecodebin0::source::latency=300 ! 'width=320,height=240,framerate=10/1' ! theoraenc ! oggmux ! tcpserversink host=RPI_IP port=7272
+  96  curl -v -X POST "https://api.poxy.eu/soap/poxyTRA" -H "Content-Type: text/xml charset=UTF-8" -H "Cache-Control: no-cache" -u "poxyTRA:fakepass" -o poxy.wsdl
+  97  sudo curl -s https://ohmyposh.dev/install.sh | bash -s
+  98  cat .tmuxp/sensorflux.yaml
+  99  wget http://wiki.instar.com/dl/Developer/html5instarfullhd.zip
+ 100  mcedit .bashrc
+ 101  ping -i 3 192.166.174.140
+ 102  httpster -p 3001
+ 103  uptime
+ 104  htop
+ 105  aplay mixkit-fast-small-sweep-transition-166.wav
+ 106  pip freeze
+ 107  espeak -v d "Closing curtains now"
+ 108  wget https://www.salamisound.de/save_file/4186820498596387596343289148859647514
+ 109  sudo chown fakeuser:fakeuser .asoundrc
+ 110  sudo raspi-config
+ 111  function ping-t { ping "$1" | while read pong; do echo "$(date): $pong"; done; }
+ 112  bluealsa-aplay police_s.wav 47:EE:2C:0A:1C:B9
+ 113  tmux list-sessions
+ 114  sudo amixer cset numid=3 1
+ 115  tmux attach -t sensorflux
+ 116  bluetoothctl
+ 117  ffmpeg  -f lavfi -i anullsrc -rtsp_transport udp -i rtsp://guest:fakepassfakepass@192.166.174.115:5515/11 -tune zerolatency -vcodec mpeg4 -pix_fmt + -c:v copy -c:a aac -vf zoompan=z=pzoom+0.01:x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':
+ 118  echo "Awesome!"
+ 119  cd ~/sounds
+ 120  wget https://assets.mixkit.co/active_storage/sfx/529/529.wav
+ 121  mv 529.wav squeak01.wav

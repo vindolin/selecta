@@ -52,7 +52,7 @@ class TestSelecta(unittest.TestCase):
 
     def test_bash_prefix(self) -> None:
         selecta = self.run_test('test_history.txt', r'^[^\d]+$', regexp=True, remove_bash_prefix=True, remove_duplicates=True)
-        self.assertEqual(selecta.matching_line_count, 4)
+        self.assertEqual(selecta.matching_line_count, 76)
 
     def test_sentence(self) -> None:
         selecta = self.run_test('test.txt', '"orange cherry apple banana banana pe')
