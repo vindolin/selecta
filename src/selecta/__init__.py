@@ -94,7 +94,7 @@ class ItemWidgetPattern(ItemWidget):
 
 
 def mark_parts(subject_string: str, s_words: list[str], case_sensitive: bool, highlight_matches: bool) -> list[Union[str, tuple]]:
-    def wrap_part(part) -> Union[str, tuple]:
+    def wrap_part(part) -> Union[str, (tuple[str, str])]:
         return ('match', part) if highlight_matches else part
 
     flags = re.IGNORECASE if not case_sensitive else 0
@@ -286,7 +286,7 @@ class Selecta(object):
     def list_resize(self, size) -> None:
         """get's called when the window is resized"""
 
-    def toggle_modifier(self, modifier) -> None:
+    def toggle_modifier(self, modifier: str) -> None:
         setattr(self, modifier, not getattr(self, modifier))
         self.update_modifiers()
 
