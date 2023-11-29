@@ -5,7 +5,7 @@ selecta - Interactively search and select entries from your bash/zsh history.
 
 This is a Python3 clone of François Fleuret's excellent [selector](https://fleuret.org/cgi-bin/gitweb/gitweb.cgi?p=selector.git;a=summary) tool.
 
-[![Screencast](https://raw.githubusercontent.com/vindolin/selecta/0.2.0/screencast.gif)](https://raw.githubusercontent.com/vindolin/selecta/0.2.0/screencast.gif)
+[![Screencast](https://raw.githubusercontent.com/vindolin/selecta/master/screencast.gif)](https://raw.githubusercontent.com/vindolin/selecta/master/screencast.gif)
 
 
 Usage
