@@ -260,7 +260,7 @@ class Selecta(object):
         if not test_mode:
             self.loop.run()
 
-    def parse_dir(self, line: str) -> Optional(str):
+    def parse_dir(self, line: str) -> Optional[str]:
         """Parse a line from the directory history."""
         match = re.search(r'(?P<path>[^\s=-]*/)(/?)', line)
         if match and hasattr(match, 'group'):
