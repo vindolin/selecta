@@ -9,7 +9,7 @@ import signal
 import struct
 import sys
 import termios
-from typing import Union
+from typing import Union, Optional
 
 import urwid
 
@@ -260,7 +260,7 @@ class Selecta(object):
         if not test_mode:
             self.loop.run()
 
-    def parse_dir(self, line: str) -> str | None:
+    def parse_dir(self, line: str) -> Optional(str):
         """Parse a line from the directory history."""
         match = re.search(r'(?P<path>[^\s=-]*/)(/?)', line)
         if match and hasattr(match, 'group'):
