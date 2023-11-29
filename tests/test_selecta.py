@@ -7,8 +7,10 @@ class TestSelecta(unittest.TestCase):
     def __init__(self, *args, **kwargs) -> None:
         super(TestSelecta, self).__init__(*args, **kwargs)
 
-    def run_test(self, file, input, reverse_order=False, remove_bash_prefix=False, remove_zsh_prefix=False,
-                 regexp=False, case_sensitive=False, remove_duplicates=False, highlight_matches=False) -> Selecta:
+    def run_test(self, file, input, reverse_order: bool = False, remove_bash_prefix: bool = False,
+                 remove_zsh_prefix: bool = False, case_sensitive: bool = False, regexp: bool = False,
+                 dirmode: bool = False, remove_duplicates: bool = False,
+                 highlight_matches: bool = False) -> Selecta:
 
         with open(Path(__file__).parent / 'data' / file, 'r') as fh:
             selecta = Selecta(
@@ -16,8 +18,9 @@ class TestSelecta(unittest.TestCase):
                 reverse_order=reverse_order,
                 remove_bash_prefix=remove_bash_prefix,
                 remove_zsh_prefix=remove_zsh_prefix,
-                regexp=regexp,
                 case_sensitive=case_sensitive,
+                regexp=regexp,
+                dirmode=dirmode,
                 remove_duplicates=remove_duplicates,
                 highlight_matches=highlight_matches,
                 test_mode=True,
@@ -62,6 +65,7 @@ class TestSelecta(unittest.TestCase):
         selecta = self.run_test('test_empty.txt', 'foo')
         self.assertEqual(selecta.matching_line_count, 0)
 
+    # test marking of parts
     def test_mark_parts1(self) -> None:
         parts = mark_parts('orange cherry Orange apple Banana banana Pear apple', ['bana', 'apple', 'pear'], case_sensitive=False, highlight_matches=True)
         self.assertEqual(parts, ['orange cherry Orange ', ('match', 'apple'), ' ', ('match', 'Bana'), 'na ', ('match', 'bana'), 'na ', ('match', 'Pear'), ' ', ('match', 'apple')])
@@ -73,3 +77,12 @@ class TestSelecta(unittest.TestCase):
     def test_mark_parts3(self) -> None:
         parts = mark_parts('apple orange cherry apple banana banana pear', ['pear', 'banana'], case_sensitive=True, highlight_matches=True)
         self.assertEqual(parts, ['apple orange cherry apple ', ('match', 'banana'), ' ', ('match', 'banana'), ' ', ('match', 'pear')])
+
+    # test directory mode
+    def test_dir1(self) -> None:
+        selecta = self.run_test('test_history.txt', '', dirmode=True)
+        self.assertEqual(selecta.matching_line_count, 34)
+
+    def test_dir2(self) -> None:
+        selecta = self.run_test('test_history.txt', r'/g\w+', regexp=True, dirmode=True)
+        self.assertEqual(selecta.matching_line_count, 7)

@@ -1,4 +1,4 @@
-"""Selecta 0.2.0"""
+"""Selecta 0.2.1"""
 
 import codecs
 import fcntl
@@ -13,7 +13,7 @@ from typing import Union
 
 import urwid
 
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 
 __all__ = []
 
@@ -143,7 +143,7 @@ class ItemWidgetWords(ItemWidget):
 class SearchEdit(urwid.Edit):
     """Edit widget for the search input."""
 
-    signals = ['done', 'toggle_regexp_modifier', 'toggle_case_modifier']
+    signals = ['done', 'toggle_case_modifier', 'toggle_regexp_modifier', 'toggle_dirmode_modifier']
 
     def keypress(self, size, key) -> None:
         if key == 'enter':
@@ -157,6 +157,10 @@ class SearchEdit(urwid.Edit):
             return
         elif key == 'ctrl r':
             urwid.emit_signal(self, 'toggle_regexp_modifier')
+            urwid.emit_signal(self, 'change', self, self.get_edit_text())
+            return
+        elif key == 'ctrl d':
+            urwid.emit_signal(self, 'toggle_dirmode_modifier')
             urwid.emit_signal(self, 'change', self, self.get_edit_text())
             return
         elif key == 'down':
@@ -196,18 +200,24 @@ class Selecta(object):
     """The main class of Selecta."""
 
     line_widgets: list = [urwid.Widget]
+    lines: list[str] = []
+    dirs: list[str]
 
     def __init__(self, infile: TextIOWrapper, reverse_order: bool,
                  remove_bash_prefix: bool = False, remove_zsh_prefix: bool = False,
-                 regexp: bool = False, case_sensitive: bool = False, remove_duplicates: bool = False,
-                 highlight_matches: bool = False, test_mode: bool = False) -> None:
+                 case_sensitive: bool = False, regexp: bool = False, dirmode: bool = False,
+                 remove_duplicates: bool = False, highlight_matches: bool = False,
+                 test_mode: bool = False) -> None:
 
         self.highlight_matches = highlight_matches
-        self.regexp_modifier = regexp
         self.case_modifier = case_sensitive
+        self.regexp_modifier = regexp
+        self.dirmode_modifier = dirmode
 
-        self.lines = self.parse_lines(infile, reverse_order,
-                                      remove_bash_prefix, remove_zsh_prefix, remove_duplicates)
+        self.dirs = []
+
+        self.parse_lines(infile, reverse_order,
+                         remove_bash_prefix, remove_zsh_prefix, remove_duplicates)
         self.matching_line_count = len(self.lines)
 
         self.search_edit = SearchEdit(edit_text='')
@@ -230,6 +240,8 @@ class Selecta(object):
                              lambda *_: self.toggle_modifier('case_modifier'))
         urwid.connect_signal(self.search_edit, 'toggle_regexp_modifier',
                              lambda *_: self.toggle_modifier('regexp_modifier'))
+        urwid.connect_signal(self.search_edit, 'toggle_dirmode_modifier',
+                             lambda *_: self.toggle_modifier('dirmode_modifier'))
 
         urwid.connect_signal(self.listbox, 'resize', self.list_resize)
 
@@ -248,11 +260,23 @@ class Selecta(object):
         if not test_mode:
             self.loop.run()
 
+    def parse_dir(self, line: str) -> str | None:
+        """Parse a line from the directory history."""
+        match = re.search(r'(?P<path>[^\s=-]*/)(/?)', line)
+        if match and hasattr(match, 'group'):
+            dir = match.group('path').strip('"')
+            return dir
+
+        return None
+
     def parse_lines(self, infile: TextIOWrapper, reverse_order: bool,
-                    remove_bash_prefix: bool, remove_zsh_prefix: bool, remove_duplicates: bool) -> list[str]:
+                    remove_bash_prefix: bool, remove_zsh_prefix: bool, remove_duplicates: bool) -> None:
         """Get the lines from the infile."""
 
-        lines: list[str] = []
+        dirs: set[str] = set()
+        urls: set[str] = set()
+
+        self.lines: list[str] = []
         if reverse_order:
             lines_ = reversed(infile.readlines())
         else:
@@ -269,13 +293,23 @@ class Selecta(object):
 
             # zsh legacy line = re.split(r'\s+', line, maxsplit=4)[-1]
 
-            if remove_duplicates and line in lines:
+            if remove_duplicates and line in self.lines:
                 continue
 
-            lines.append(line)
+            self.lines.append(line)
 
-        return lines
-    # [ItemWidgetPlain(line) for line in self.lines]
+            if dir_or_url := self.parse_dir(line):
+                if '://' in dir_or_url:
+                    urls.add(dir_or_url)
+                else:
+                    dirs.add(dir_or_url)
+
+        if len(dirs) > 0:
+            self.dirs += sorted(dirs)
+        if len(urls) > 0:
+            if len(dirs) > 0:
+                self.dirs += ['']
+            self.dirs += sorted(urls)
 
     def update_item_list(self, items: list) -> None:
         """Update the list of items."""
@@ -297,8 +331,8 @@ class Selecta(object):
             modifiers.append('regexp')
         if self.case_modifier:
             modifiers.append('case')
-        # if self.fuzzy_modifier:
-        #     modifiers.append('fuzzy')
+        if self.dirmode_modifier:
+            modifiers.append('dirmode')
 
         if len(modifiers) > 0:
             self.modifier_display.set_text(f'[{", ".join(modifiers)}]')
@@ -313,6 +347,8 @@ class Selecta(object):
         try:
             re_search = re.compile(pattern, flags).search
 
+            use_list = self.dirs if self.dirmode_modifier else self.lines
+
             if False:
                 items = []
                 for line in self.lines:
@@ -326,7 +362,7 @@ class Selecta(object):
                 # use faster(?) list comprehension
                 items = [ItemWidgetPattern(line, match.group())
                          if match and self.highlight_matches else ItemWidgetPlain(line)
-                         for line in self.lines if (match := re_search(line))]
+                         for line in use_list if (match := re_search(line))]
 
             if len(items) > 0:
                 return items
@@ -353,23 +389,26 @@ class Selecta(object):
 
         words = search_text.split()
 
+        use_list = self.dirs if self.dirmode_modifier else self.lines
+
         return [ItemWidgetWords(line, search_words=words,
                                 case_modifier=self.case_modifier, highlight_matches=self.highlight_matches)
-                for line in self.lines if check_all_words(line, words)]
+                for line in use_list if check_all_words(line, words)]
 
     def update_list(self, search_text: str = '') -> None:
         """Filter the list with the given search criteria."""
+        use_list = self.dirs if self.dirmode_modifier else self.lines
 
         # show all lines if search_text is empty
         if search_text == '' or search_text == '"' or search_text == '""':
-            self.update_item_list([ItemWidgetPlain(line) for line in self.lines])
+            self.update_item_list([ItemWidgetPlain(line) for line in use_list])
 
         # search for whole string if search_text begins with quotation mark
         elif search_text.startswith('"'):
             search_text = search_text[1:]
             self.update_item_list([
                 ItemWidgetStartswith(line, search_text) if self.highlight_matches else ItemWidgetPlain(line)
-                for line in self.lines if search_text in line])
+                for line in use_list if search_text in line])
 
         elif self.regexp_modifier:
             self.update_item_list(self.filter_regex(search_text))
@@ -387,7 +426,7 @@ class Selecta(object):
         self.item_list.set_focus(0)
 
     def edit_change(self, _, search_text) -> None:
-        self.update_list(search_text)
+        self.update_list(search_text.strip())
 
     def edit_done(self, _) -> None:
         self.view.focus_position = 'body'
@@ -419,8 +458,9 @@ class Selecta(object):
         elif input == 'ctrl r':
             self.toggle_modifier('regexp_modifier')
 
-        # elif input_ == 'ctrl f':
-        #     self.toggle_modifier('fuzzy_modifier')
+        elif input == 'ctrl d':
+            self.toggle_modifier('dirmode_modifier')
+            self.update_list('')
 
         elif input == 'backspace':
             self.search_edit.set_edit_text(self.search_edit.get_text()[0][:-1])
@@ -460,6 +500,10 @@ def main() -> None:
     parser.add_argument('-a', '--case-sensitive',
                         action='store_true', default=False,
                         help='start in case-sensitive mode')
+
+    parser.add_argument('-D', '--dir-mode',
+                        action='store_true', default=False,
+                        help='start in directory mode')
 
     parser.add_argument('-d', '--remove-duplicates',
                         action='store_true', default=False,
@@ -506,8 +550,9 @@ def main() -> None:
         reverse_order=args.reverse_order,
         remove_bash_prefix=args.remove_bash_prefix,
         remove_zsh_prefix=args.remove_zsh_prefix,
-        regexp=args.regexp,
         case_sensitive=args.case_sensitive,
+        regexp=args.regexp,
+        dirmode=args.dir_mode,
         remove_duplicates=args.remove_duplicates,
         highlight_matches=args.highlight_matches,
         # TODO support missing options from the original selector

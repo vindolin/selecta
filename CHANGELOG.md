@@ -1,4 +1,6 @@
 # Changelog
+## 0.2.1:
+- add directory/url search feature
 
 ## 0.2.0:
 - bugfixes

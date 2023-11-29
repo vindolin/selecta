@@ -26,6 +26,8 @@ Press <kbd>Enter</kbd> to copy the selected entry to the console.
 
 <kbd>CTRL+r</kbd> toggles regex search
 
+<kbd>CTRL+d</kbd> toggles directory/url search
+
 Installation
 ============
 
@@ -42,7 +44,7 @@ This will append one of the following lines to your ~/.bashrc/zshrc:
 
 ```console
 bind -x '"\C-[{key}":"\selecta --bash -y <(history)"'
-bindkey -s "^[{key}" "selecta --zsh -y <(history)^M"
+bindkey -s "^[{key}" "selecta --zsh -y <(history 0)^M"
 ```
 
 Upgrade from older version to 0.2.0
@@ -57,7 +59,7 @@ selecta_add_keybinding
 -------------
 
 ```
-    usage: selecta [-h] [-i] [-b] [-z] [-e] [-a] [-d] [-y] [--bash] [--zsh]
+    usage: selecta [-h] [-i] [-b] [-z] [-e] [-a] [-D] [-d] [-y] [--bash] [--zsh]
                    [infile]
 
     positional arguments:
@@ -72,6 +74,7 @@ selecta_add_keybinding
                             remove the time prefix from zsh history
       -e, --regexp          start in regexp mode
       -a, --case-sensitive  start in case-sensitive mode
+      -D, --dir-mode        start in directory mode
       -d, --remove-duplicates
                             remove duplicated lines
       -y, --show-matches    highlight the part of each line which matches the
