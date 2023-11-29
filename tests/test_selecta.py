@@ -9,7 +9,7 @@ class TestSelecta(unittest.TestCase):
 
     def run_test(self, file, input, reverse_order: bool = False, remove_bash_prefix: bool = False,
                  remove_zsh_prefix: bool = False, case_sensitive: bool = False, regexp: bool = False,
-                 dirmode: bool = False, remove_duplicates: bool = False,
+                 path_mode: bool = False, remove_duplicates: bool = False,
                  highlight_matches: bool = False) -> Selecta:
 
         with open(Path(__file__).parent / 'data' / file, 'r') as fh:
@@ -20,7 +20,7 @@ class TestSelecta(unittest.TestCase):
                 remove_zsh_prefix=remove_zsh_prefix,
                 case_sensitive=case_sensitive,
                 regexp=regexp,
-                dirmode=dirmode,
+                path_mode=path_mode,
                 remove_duplicates=remove_duplicates,
                 highlight_matches=highlight_matches,
                 test_mode=True,
@@ -80,9 +80,9 @@ class TestSelecta(unittest.TestCase):
 
     # test directory mode
     def test_dir1(self) -> None:
-        selecta = self.run_test('test_history.txt', '', dirmode=True)
+        selecta = self.run_test('test_history.txt', '', path_mode=True)
         self.assertEqual(selecta.matching_line_count, 34)
 
     def test_dir2(self) -> None:
-        selecta = self.run_test('test_history.txt', r'/g\w+', regexp=True, dirmode=True)
+        selecta = self.run_test('test_history.txt', r'/g\w+', regexp=True, path_mode=True)
         self.assertEqual(selecta.matching_line_count, 7)

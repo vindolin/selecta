@@ -143,7 +143,8 @@ class ItemWidgetWords(ItemWidget):
 class SearchEdit(urwid.Edit):
     """Edit widget for the search input."""
 
-    signals = ['done', 'toggle_case_modifier', 'toggle_regexp_modifier', 'toggle_dirmode_modifier']
+    signals = ['done', 'toggle_case_modifier', 'toggle_regexp_modifier',
+               'toggle_path_mode_modifier', 'toggle_show_files_modifier']
 
     def keypress(self, size, key) -> None:
         if key == 'enter':
@@ -159,8 +160,12 @@ class SearchEdit(urwid.Edit):
             urwid.emit_signal(self, 'toggle_regexp_modifier')
             urwid.emit_signal(self, 'change', self, self.get_edit_text())
             return
-        elif key == 'ctrl d':
-            urwid.emit_signal(self, 'toggle_dirmode_modifier')
+        elif key == 'ctrl p':
+            urwid.emit_signal(self, 'toggle_path_mode_modifier')
+            urwid.emit_signal(self, 'change', self, self.get_edit_text())
+            return
+        elif key == 'ctrl f':
+            urwid.emit_signal(self, 'toggle_show_files_modifier')
             urwid.emit_signal(self, 'change', self, self.get_edit_text())
             return
         elif key == 'down':
@@ -205,14 +210,15 @@ class Selecta(object):
 
     def __init__(self, infile: TextIOWrapper, reverse_order: bool,
                  remove_bash_prefix: bool = False, remove_zsh_prefix: bool = False,
-                 case_sensitive: bool = False, regexp: bool = False, dirmode: bool = False,
-                 remove_duplicates: bool = False, highlight_matches: bool = False,
-                 test_mode: bool = False) -> None:
+                 case_sensitive: bool = False, regexp: bool = False, path_mode: bool = False,
+                 show_files: bool = False, remove_duplicates: bool = False,
+                 highlight_matches: bool = False, test_mode: bool = False) -> None:
 
         self.highlight_matches = highlight_matches
         self.case_modifier = case_sensitive
         self.regexp_modifier = regexp
-        self.dirmode_modifier = dirmode
+        self.path_mode_modifier = path_mode
+        self.show_files_modifier = show_files
 
         self.dirs = []
 
@@ -240,8 +246,10 @@ class Selecta(object):
                              lambda *_: self.toggle_modifier('case_modifier'))
         urwid.connect_signal(self.search_edit, 'toggle_regexp_modifier',
                              lambda *_: self.toggle_modifier('regexp_modifier'))
-        urwid.connect_signal(self.search_edit, 'toggle_dirmode_modifier',
-                             lambda *_: self.toggle_modifier('dirmode_modifier'))
+        urwid.connect_signal(self.search_edit, 'toggle_path_mode_modifier',
+                             lambda *_: self.toggle_modifier('path_mode_modifier'))
+        urwid.connect_signal(self.search_edit, 'toggle_show_files_modifier',
+                             lambda *_: self.toggle_modifier('path_mode_modifier'))
 
         urwid.connect_signal(self.listbox, 'resize', self.list_resize)
 
@@ -255,17 +263,21 @@ class Selecta(object):
         self.loop.screen.set_terminal_properties(colors=256)  # type: ignore - make pylance happy
         # self.loop.screen.set_terminal_properties(colors=2**24)
 
-        self.update_list('')
+        self.update_list()
 
         if not test_mode:
             self.loop.run()
 
-    def parse_dir(self, line: str) -> Optional[str]:
-        """Parse a line from the directory history."""
-        match = re.search(r'(?P<path>[^\s=-]*/)(/?)', line)
+    def parse_path(self, line: str) -> Optional[str]:
+        """Look for directory paths and urls, only called."""
+
+        # pattern = r'(?P<path>[^\s=-]+/.+\.\w+)' # todo, parse filenames
+        pattern = r'(?P<path>[^\s=-]+/)(/?)'
+
+        match = re.search(pattern, line)
         if match and hasattr(match, 'group'):
-            dir = match.group('path').strip('"')
-            return dir
+            path = match.group('path').strip('"')
+            return path
 
         return None
 
@@ -298,7 +310,7 @@ class Selecta(object):
 
             self.lines.append(line)
 
-            if dir_or_url := self.parse_dir(line):
+            if dir_or_url := self.parse_path(line):
                 if '://' in dir_or_url:
                     urls.add(dir_or_url)
                 else:
@@ -326,13 +338,15 @@ class Selecta(object):
 
     def update_modifiers(self) -> None:
         """Update the modifier display"""
-        modifiers: list = []
+        modifiers: set[str] = set()
         if self.regexp_modifier:
-            modifiers.append('regexp')
+            modifiers.add('regexp')
         if self.case_modifier:
-            modifiers.append('case')
-        if self.dirmode_modifier:
-            modifiers.append('dirmode')
+            modifiers.add('case')
+        if self.path_mode_modifier:
+            modifiers.add('path_mode')
+        if self.show_files_modifier:
+            modifiers.add('show_files')
 
         if len(modifiers) > 0:
             self.modifier_display.set_text(f'[{", ".join(modifiers)}]')
@@ -347,7 +361,7 @@ class Selecta(object):
         try:
             re_search = re.compile(pattern, flags).search
 
-            use_list = self.dirs if self.dirmode_modifier else self.lines
+            use_list = self.dirs if self.path_mode_modifier else self.lines
 
             if False:
                 items = []
@@ -389,7 +403,7 @@ class Selecta(object):
 
         words = search_text.split()
 
-        use_list = self.dirs if self.dirmode_modifier else self.lines
+        use_list = self.dirs if self.path_mode_modifier else self.lines
 
         return [ItemWidgetWords(line, search_words=words,
                                 case_modifier=self.case_modifier, highlight_matches=self.highlight_matches)
@@ -397,7 +411,7 @@ class Selecta(object):
 
     def update_list(self, search_text: str = '') -> None:
         """Filter the list with the given search criteria."""
-        use_list = self.dirs if self.dirmode_modifier else self.lines
+        use_list = self.dirs if self.path_mode_modifier else self.lines
 
         # show all lines if search_text is empty
         if search_text == '' or search_text == '"' or search_text == '""':
@@ -458,9 +472,13 @@ class Selecta(object):
         elif input == 'ctrl r':
             self.toggle_modifier('regexp_modifier')
 
-        elif input == 'ctrl d':
-            self.toggle_modifier('dirmode_modifier')
-            self.update_list('')
+        elif input == 'ctrl p':
+            self.toggle_modifier('path_mode_modifier')
+            self.update_list()
+
+        elif input == 'ctrl f':
+            self.toggle_modifier('show_files_modifier')
+            self.update_list()
 
         elif input == 'backspace':
             self.search_edit.set_edit_text(self.search_edit.get_text()[0][:-1])
@@ -501,9 +519,13 @@ def main() -> None:
                         action='store_true', default=False,
                         help='start in case-sensitive mode')
 
-    parser.add_argument('-D', '--dir-mode',
+    parser.add_argument('-p', '--path-mode',
                         action='store_true', default=False,
-                        help='start in directory mode')
+                        help='start in path/url mode')
+
+    parser.add_argument('-f', '--show-files',
+                        action='store_true', default=False,
+                        help='start in show file mode')
 
     parser.add_argument('-d', '--remove-duplicates',
                         action='store_true', default=False,
@@ -528,7 +550,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    # debug('\033[2J')
+    debug('\033[2J')
 
     # if no infile is given, print help and exit
     if args.infile.name == '<stdin>':
@@ -552,7 +574,8 @@ def main() -> None:
         remove_zsh_prefix=args.remove_zsh_prefix,
         case_sensitive=args.case_sensitive,
         regexp=args.regexp,
-        dirmode=args.dir_mode,
+        path_mode=args.path_mode,
+        show_files=args.show_files,
         remove_duplicates=args.remove_duplicates,
         highlight_matches=args.highlight_matches,
         # TODO support missing options from the original selector
