@@ -11,6 +11,13 @@ import sys
 import termios
 from typing import Union
 
+try:
+    from thefuzz import fuzz
+    from . fuzzy import fuzzy_list
+except ImportError:
+    fuzz = None
+
+
 import urwid
 
 __version__ = '0.2.0'
@@ -199,18 +206,21 @@ class Selecta(object):
 
     def __init__(self, infile: TextIOWrapper, reverse_order: bool,
                  remove_bash_prefix: bool = False, remove_zsh_prefix: bool = False,
-                 regexp: bool = False, case_sensitive: bool = False, remove_duplicates: bool = False,
-                 highlight_matches: bool = False, test_mode: bool = False) -> None:
+                 regexp: bool = False, case_sensitive: bool = False, fuzzy: bool = False,
+                 remove_duplicates: bool = False, highlight_matches: bool = False,
+                 test_mode: bool = False) -> None:
 
         self.highlight_matches = highlight_matches
         self.regexp_modifier = regexp
         self.case_modifier = case_sensitive
+        self.fuzzy_modifier = fuzzy
+
+        self.search_edit = SearchEdit(edit_text='')
 
         self.lines = self.parse_lines(infile, reverse_order,
                                       remove_bash_prefix, remove_zsh_prefix, remove_duplicates)
         self.matching_line_count = len(self.lines)
 
-        self.search_edit = SearchEdit(edit_text='')
         self.modifier_display = urwid.Text('')
         self.line_count_display = LineCountWidget(self.matching_line_count)
         header = urwid.AttrMap(urwid.Columns([
@@ -248,8 +258,8 @@ class Selecta(object):
         if not test_mode:
             self.loop.run()
 
-    def parse_lines(self, infile: TextIOWrapper, reverse_order: bool,
-                    remove_bash_prefix: bool, remove_zsh_prefix: bool, remove_duplicates: bool) -> list[str]:
+    def parse_lines(self, infile: TextIOWrapper, reverse_order: bool, remove_bash_prefix: bool,
+                    remove_zsh_prefix: bool, remove_duplicates: bool) -> list[str]:
         """Get the lines from the infile."""
 
         lines: list[str] = []
@@ -274,6 +284,9 @@ class Selecta(object):
 
             lines.append(line)
 
+        if fuzz and self.fuzzy_modifier:
+            lines = fuzzy_list(self.search_edit.get_edit_text(), lines)
+
         return lines
     # [ItemWidgetPlain(line) for line in self.lines]
 
@@ -297,8 +310,8 @@ class Selecta(object):
             modifiers.append('regexp')
         if self.case_modifier:
             modifiers.append('case')
-        # if self.fuzzy_modifier:
-        #     modifiers.append('fuzzy')
+        if fuzz and self.fuzzy_modifier:
+            modifiers.append('fuzzy')
 
         if len(modifiers) > 0:
             self.modifier_display.set_text(f'[{", ".join(modifiers)}]')
@@ -353,9 +366,14 @@ class Selecta(object):
 
         words = search_text.split()
 
-        return [ItemWidgetWords(line, search_words=words,
-                                case_modifier=self.case_modifier, highlight_matches=self.highlight_matches)
-                for line in self.lines if check_all_words(line, words)]
+        if fuzz and self.fuzzy_modifier:
+            return [ItemWidgetWords(line, search_words=words,
+                                    case_modifier=self.case_modifier, highlight_matches=self.highlight_matches)
+                    for line in fuzzy_list(search_text, self.lines)]
+        else:
+            return [ItemWidgetWords(line, search_words=words,
+                                    case_modifier=self.case_modifier, highlight_matches=self.highlight_matches)
+                    for line in self.lines if check_all_words(line, words)]
 
     def update_list(self, search_text: str = '') -> None:
         """Filter the list with the given search criteria."""
@@ -419,8 +437,8 @@ class Selecta(object):
         elif input == 'ctrl r':
             self.toggle_modifier('regexp_modifier')
 
-        # elif input_ == 'ctrl f':
-        #     self.toggle_modifier('fuzzy_modifier')
+        elif fuzz and input == 'ctrl f':
+            self.toggle_modifier('fuzzy_modifier')
 
         elif input == 'backspace':
             self.search_edit.set_edit_text(self.search_edit.get_text()[0][:-1])
@@ -482,6 +500,10 @@ def main() -> None:
     parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}',
                         help='print selecta version')
 
+    parser.add_argument('-f', '--fuzzy',
+                        action='store_true', default=False,
+                        help=f'start in fuzzy mode {not fuzz and "(requires thefuzz, not installed!)"}')
+
     args = parser.parse_args()
 
     # debug('\033[2J')
@@ -510,6 +532,7 @@ def main() -> None:
         case_sensitive=args.case_sensitive,
         remove_duplicates=args.remove_duplicates,
         highlight_matches=args.highlight_matches,
+        fuzzy=args.fuzzy if fuzz else False,
         # TODO support missing options from the original selector
         # TODO directory history would be sweet!
     )
