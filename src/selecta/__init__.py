@@ -197,7 +197,7 @@ class Selecta(object):
 
     line_widgets: list = [urwid.Widget]
 
-    def __init__(self, infile, reverse_order: bool,
+    def __init__(self, infile: TextIOWrapper, reverse_order: bool,
                  remove_bash_prefix: bool = False, remove_zsh_prefix: bool = False,
                  regexp: bool = False, case_sensitive: bool = False, remove_duplicates: bool = False,
                  highlight_matches: bool = False, test_mode: bool = False) -> None:
