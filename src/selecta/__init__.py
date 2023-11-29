@@ -27,6 +27,7 @@ def inject_command(command: str) -> None:
 
 def debug(value, prefix: str = '') -> None:
     """only usded when debugging"""
+    return
     with codecs.open('/tmp/selecta.log', 'a', encoding='utf-8') as file:
         file.write(f'{prefix} {value}\n')
 
