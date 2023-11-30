@@ -49,7 +49,13 @@ signal.signal(signal.SIGINT, lambda *_: sys.exit(0))  # perish in style
 
 class ItemWidget(urwid.WidgetWrap):
     line: str
-    line_number: str
+    line_number: str = ''
+
+    def pre_init(self, line: str, line_numbers: bool = False) -> None:
+        if line_numbers:
+            self.line_number, self.line = line.split(None, 1)
+        else:
+            self.line = line
 
     """Base for a widget for a single line in the listbox."""
     def selectable(self) -> bool:
@@ -61,16 +67,16 @@ class ItemWidget(urwid.WidgetWrap):
 
 class ItemWidgetPlain(ItemWidget):
     """Widget that displays a line as is."""
-    def __init__(self, line: str) -> None:
-        self.line_number, self.line = line.split(None, 1)
+    def __init__(self, line: str, line_numbers: bool = False) -> None:
+        self.pre_init(line, line_numbers)
         text = urwid.AttrMap(urwid.Text(self.line), 'line', 'line_focus')
         super().__init__(text)
 
 
 class ItemWidgetLiteral(ItemWidget):
     """Widget that displays a line as is."""
-    def __init__(self, line: str, search_text: str) -> None:
-        self.line_number, self.line = line.split(None, 1)
+    def __init__(self, line: str, search_text: str, line_numbers: bool = False) -> None:
+        self.pre_init(line, line_numbers)
 
         parts = [('match', part) if part == search_text else part
                  for part in re.split(f'({re.escape(search_text)})', self.line)]
@@ -81,8 +87,8 @@ class ItemWidgetLiteral(ItemWidget):
 
 class ItemWidgetPattern(ItemWidget):
     """Widget that highlights the matching part of a line."""
-    def __init__(self, line: str, match: str) -> None:
-        _, self.line = line.split(None, 1)
+    def __init__(self, line: str, match: str, line_numbers: bool = False) -> None:
+        self.pre_init(line, line_numbers)
 
         # highlight the matches
         matches = re.split(f'({re.escape(match)})', self.line)
@@ -131,9 +137,10 @@ def mark_parts(subject_string: str, s_words: list[str], case_sensitive: bool, hi
 
 class ItemWidgetWords(ItemWidget):
     """Widget that highlights the matching words of a line."""
-    def __init__(self, line: str, search_words: list[str], case_modifier: bool, highlight_matches: bool) -> None:
-        self.line_number, self.line = line.split(None, 1)
-        debug(f'line: {self.line_number}:{self.line}, search_words: {search_words}')
+    def __init__(self, line: str, search_words: list[str], case_modifier: bool, highlight_matches: bool, line_numbers: bool = False) -> None:
+        self.pre_init(line, line_numbers)
+
+        # debug(f'line: {self.line_number}:{self.line}, search_words: {search_words}')
 
         text = urwid.AttrMap(
             urwid.Text(mark_parts(self.line, search_words, case_modifier, highlight_matches)),
@@ -216,7 +223,7 @@ class Selecta(object):
     dirs: list[str]
 
     def __init__(self, infile: TextIOWrapper, reverse_order: bool,
-                 remove_bash_prefix: bool = False, remove_zsh_prefix: bool = False,
+                 bash_mode: bool = False, zsh_mode: bool = False,
                  case_sensitive: bool = False, regexp: bool = False, path_mode: bool = False,
                  show_files: bool = False, remove_duplicates: bool = False,
                  highlight_matches: bool = False, test_mode: bool = False) -> None:
@@ -227,10 +234,13 @@ class Selecta(object):
         self.path_mode_modifier = path_mode
         self.show_files_modifier = show_files
 
+        self.use_line_numbers = bash_mode or zsh_mode
+        # debug(self.use_line_numbers)
+
         self.dirs = []
 
         self.parse_lines(infile, reverse_order,
-                         remove_bash_prefix, remove_zsh_prefix, remove_duplicates)
+                         bash_mode, zsh_mode, remove_duplicates)
         self.matching_line_count = len(self.lines)
 
         self.search_edit = SearchEdit(edit_text='')
@@ -289,7 +299,7 @@ class Selecta(object):
         return None
 
     def parse_lines(self, infile: TextIOWrapper, reverse_order: bool,
-                    remove_bash_prefix: bool, remove_zsh_prefix: bool, remove_duplicates: bool) -> None:
+                    bash_mode: bool, zsh_mode: bool, remove_duplicates: bool) -> None:
         """Get the lines from the infile."""
 
         dirs: set[str] = set()
@@ -304,7 +314,7 @@ class Selecta(object):
         for line in lines_:
             line = line.strip()
             # remove bash/zsh line numbers from the beginning of the line
-            if remove_bash_prefix or remove_zsh_prefix:
+            if bash_mode or zsh_mode:
                 line = line.strip()
                 # try:
                 #     line = line.split(None, 1)[1].strip()
@@ -382,8 +392,8 @@ class Selecta(object):
                             items.append(ItemWidgetPlain(line))
             else:
                 # use faster(?) list comprehension
-                items: list[urwid.Widget] = [ItemWidgetPattern(line, match.group())
-                                             if match and self.highlight_matches else ItemWidgetPlain(line)
+                items: list[urwid.Widget] = [ItemWidgetPattern(line, match.group(), line_numbers=self.use_line_numbers)
+                                             if match and self.highlight_matches else ItemWidgetPlain(line, line_numbers=self.use_line_numbers)
                                              for line in use_list if (match := re_search(line))]
 
             if len(items) > 0:
@@ -414,19 +424,18 @@ class Selecta(object):
         use_list = self.dirs if self.path_mode_modifier else self.lines
 
         return [ItemWidgetWords(line, search_words=words,
-                                case_modifier=self.case_modifier, highlight_matches=self.highlight_matches)
+                                case_modifier=self.case_modifier, highlight_matches=self.highlight_matches, line_numbers=self.use_line_numbers)
                 for line in use_list if check_all_words(line, words)]
 
     def filter_literal(self, search_text: str) -> list[urwid.Widget]:
-        search_text = search_text.strip('"')
+        search_text = search_text.strip('"')  # quote marks were only used to indicate literal search
         items = []
         for line in self.lines:
-            match = re.match(rf'^(\d*)\s+{search_text}', line)
-            if match:
+            if re.match(rf'^(\d*)\s+{search_text}', line):  # filter out matching lines
                 if self.highlight_matches:
-                    items.append(ItemWidgetLiteral(line, search_text))
+                    items.append(ItemWidgetLiteral(line, search_text, line_numbers=self.use_line_numbers))
                 else:
-                    items.append(ItemWidgetPlain(line))
+                    items.append(ItemWidgetPlain(line, line_numbers=self.use_line_numbers))
 
         if len(items) > 0:
             return items
@@ -439,7 +448,7 @@ class Selecta(object):
 
         # show all lines if search_text is empty
         if search_text == '' or search_text == '"' or search_text == '""':
-            self.update_item_list([ItemWidgetPlain(line) for line in use_list])
+            self.update_item_list([ItemWidgetPlain(line, line_numbers=self.use_line_numbers) for line in use_list])
 
         # search for whole string if search_text begins with quotation mark
         elif search_text.startswith('"'):
@@ -468,26 +477,29 @@ class Selecta(object):
         self.view.focus_position = 'body'
 
     def on_unhandled_input(self, input) -> bool:
+
         if isinstance(input, tuple):  # mouse events
             return False
 
-        if input == 'enter':
+        if input in ['enter', 'delete']:
             focused_widget: Optional[ItemWidget] = self.listbox.get_focus()[0]
 
             if focused_widget is None:
                 return False
 
+            # empty list message
             if isinstance(focused_widget, urwid.Text):
                 return False
 
             line = focused_widget.line
             debug(focused_widget.line_number)
 
-            self.view.set_header(urwid.AttrMap(
-                urwid.Text(f'selected: {line}'), 'head'))
+            if input == 'enter':
+                inject_command(line)
+                raise urwid.ExitMainLoop()
 
-            inject_command(line)
-            raise urwid.ExitMainLoop()
+            elif input == 'delete':
+                pass
 
         elif input == 'ctrl a':
             self.toggle_modifier('case_modifier')
@@ -558,10 +570,10 @@ def main() -> None:
                         action='store_true', default=False,
                         help='highlight the part of each line which match the substrings or regexp')
 
-    parser.add_argument('--bash', action='store_true',
+    parser.add_argument('--bash', dest='bash_mode', action='store_true',
                         default=False, help='standard for bash history search, same as -b -i -d')
 
-    parser.add_argument('--zsh', action='store_true',
+    parser.add_argument('--zsh', dest='zsh_mode', action='store_true',
                         default=False, help='standard for zsh history search, same as -z -i -d')
 
     parser.add_argument('infile', nargs='?',
@@ -580,21 +592,15 @@ def main() -> None:
         parser.print_help()
         exit('\nYou must provide an infile!')
 
-    if args.bash:
-        args.remove_bash_prefix = True
-
-    if args.zsh:
-        args.remove_zsh_prefix = True
-
-    if args.bash or args.zsh:
+    if args.bash_mode or args.zsh_mode:
         args.reverse_order = True
         args.remove_duplicates = True
 
     Selecta(
         infile=args.infile,
         reverse_order=args.reverse_order,
-        remove_bash_prefix=args.remove_bash_prefix,
-        remove_zsh_prefix=args.remove_zsh_prefix,
+        bash_mode=args.bash_mode,
+        zsh_mode=args.zsh_mode,
         case_sensitive=args.case_sensitive,
         regexp=args.regexp,
         path_mode=args.path_mode,
