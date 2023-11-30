@@ -7,17 +7,17 @@ class TestSelecta(unittest.TestCase):
     def __init__(self, *args, **kwargs) -> None:
         super(TestSelecta, self).__init__(*args, **kwargs)
 
-    def run_test(self, file, input, reverse_order: bool = False, remove_bash_prefix: bool = False,
-                 remove_zsh_prefix: bool = False, case_sensitive: bool = False, regexp: bool = False,
+    def run_test(self, file_name: str, input: str, reverse_order: bool = False, bash_mode: bool = False,
+                 zsh_mode: bool = False, case_sensitive: bool = False, regexp: bool = False,
                  path_mode: bool = False, remove_duplicates: bool = False,
                  highlight_matches: bool = False) -> Selecta:
 
-        with open(Path(__file__).parent / 'data' / file, 'r') as fh:
+        with open(Path(__file__).parent / 'data' / file_name, 'r') as fh:
             selecta = Selecta(
                 infile=fh,
                 reverse_order=reverse_order,
-                remove_bash_prefix=remove_bash_prefix,
-                remove_zsh_prefix=remove_zsh_prefix,
+                bash_mode=bash_mode,
+                zsh_mode=zsh_mode,
                 case_sensitive=case_sensitive,
                 regexp=regexp,
                 path_mode=path_mode,
@@ -49,15 +49,15 @@ class TestSelecta(unittest.TestCase):
         selecta = self.run_test('test.txt', 'baz')
         self.assertEqual(selecta.matching_line_count, 0)
 
-    def test_regex_default(self) -> None:
+    def test_regex_default1(self) -> None:
         selecta = self.run_test('test.txt', 'Or.+bana', regexp=True, case_sensitive=True, remove_duplicates=True)
         self.assertEqual(selecta.matching_line_count, 1)
 
     def test_bash_prefix(self) -> None:
-        selecta = self.run_test('test_history.txt', r'^[^\d]+$', regexp=True, remove_bash_prefix=True, remove_duplicates=True)
-        self.assertEqual(selecta.matching_line_count, 76)
+        selecta = self.run_test('test_history.txt', r'fake\w+.*[^\d]$', regexp=True, bash_mode=True, remove_duplicates=True)
+        self.assertEqual(selecta.matching_line_count, 9)
 
-    def test_sentence(self) -> None:
+    def test_sentence1(self) -> None:
         selecta = self.run_test('test.txt', '"orange cherry apple banana banana pe')
         self.assertEqual(selecta.matching_line_count, 1)
 
@@ -81,8 +81,8 @@ class TestSelecta(unittest.TestCase):
     # test directory mode
     def test_dir1(self) -> None:
         selecta = self.run_test('test_history.txt', '', path_mode=True)
-        self.assertEqual(selecta.matching_line_count, 34)
+        self.assertEqual(selecta.matching_line_count, 31)
 
     def test_dir2(self) -> None:
         selecta = self.run_test('test_history.txt', r'/g\w+', regexp=True, path_mode=True)
-        self.assertEqual(selecta.matching_line_count, 7)
+        self.assertEqual(selecta.matching_line_count, 4)

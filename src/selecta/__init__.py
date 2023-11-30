@@ -64,12 +64,12 @@ class ItemWidgetPlain(ItemWidget):
         super().__init__(text)
 
 
-class ItemWidgetStartswith(ItemWidget):
+class ItemWidgetLiteral(ItemWidget):
     """Widget that displays a line as is."""
     def __init__(self, line: str, search_text: str) -> None:
         self.line = line
         parts = [('match', part) if part == search_text else part
-                 for part in re.split(f'({re.escape(search_text)})', self.line)]
+                 for part in re.split(f'^({re.escape(search_text)})', self.line)]
         text = urwid.AttrMap(urwid.Text(parts), 'line', 'line_focus')
         super().__init__(text)
 
@@ -126,8 +126,9 @@ def mark_parts(subject_string: str, s_words: list[str], case_sensitive: bool, hi
 
 class ItemWidgetWords(ItemWidget):
     """Widget that highlights the matching words of a line."""
-    def __init__(self, line, search_words, case_modifier, highlight_matches) -> None:
-        self.line = line
+    def __init__(self, line: str, search_words: list[str], case_modifier: bool, highlight_matches: bool) -> None:
+
+        # debug(f'line: {self.line_number}:{self.line}, search_words: {search_words}')
 
         text = urwid.AttrMap(
             urwid.Text(mark_parts(line, search_words, case_modifier, highlight_matches)),
@@ -145,7 +146,7 @@ class SearchEdit(urwid.Edit):
     """Edit widget for the search input."""
 
     signals = ['done', 'toggle_case_modifier', 'toggle_regexp_modifier',
-               'toggle_path_mode_modifier', 'toggle_show_files_modifier']
+               'toggle_path_mode_modifier']  # , 'toggle_show_files_modifier'
 
     def keypress(self, size, key) -> None:
         if key == 'enter':
@@ -165,11 +166,11 @@ class SearchEdit(urwid.Edit):
             urwid.emit_signal(self, 'toggle_path_mode_modifier')
             urwid.emit_signal(self, 'change', self, self.get_edit_text())
             return
-        elif key == 'ctrl f':
-            urwid.emit_signal(self, 'toggle_show_files_modifier')
-            urwid.emit_signal(self, 'change', self, self.get_edit_text())
-            return
-        elif key == 'down':
+        # elif key == 'ctrl f':
+        #     urwid.emit_signal(self, 'toggle_show_files_modifier')
+        #     urwid.emit_signal(self, 'change', self, self.get_edit_text())
+        #     return
+        elif key in ['down', 'page down']:
             urwid.emit_signal(self, 'done', None)
             return
 
@@ -210,21 +211,23 @@ class Selecta(object):
     dirs: list[str]
 
     def __init__(self, infile: TextIOWrapper, reverse_order: bool,
-                 remove_bash_prefix: bool = False, remove_zsh_prefix: bool = False,
+                 bash_mode: bool = False, zsh_mode: bool = False,
                  case_sensitive: bool = False, regexp: bool = False, path_mode: bool = False,
-                 show_files: bool = False, remove_duplicates: bool = False,
+                 remove_duplicates: bool = False,
                  highlight_matches: bool = False, test_mode: bool = False) -> None:
+
+        # show_files: bool = False,
 
         self.highlight_matches = highlight_matches
         self.case_modifier = case_sensitive
         self.regexp_modifier = regexp
         self.path_mode_modifier = path_mode
-        self.show_files_modifier = show_files
+        # self.show_files_modifier = show_files
 
         self.dirs = []
 
         self.parse_lines(infile, reverse_order,
-                         remove_bash_prefix, remove_zsh_prefix, remove_duplicates)
+                         bash_mode, zsh_mode, remove_duplicates)
         self.matching_line_count = len(self.lines)
 
         self.search_edit = SearchEdit(edit_text='')
@@ -249,8 +252,8 @@ class Selecta(object):
                              lambda *_: self.toggle_modifier('regexp_modifier'))
         urwid.connect_signal(self.search_edit, 'toggle_path_mode_modifier',
                              lambda *_: self.toggle_modifier('path_mode_modifier'))
-        urwid.connect_signal(self.search_edit, 'toggle_show_files_modifier',
-                             lambda *_: self.toggle_modifier('path_mode_modifier'))
+        # urwid.connect_signal(self.search_edit, 'toggle_show_files_modifier',
+        #                      lambda *_: self.toggle_modifier('path_mode_modifier'))
 
         urwid.connect_signal(self.listbox, 'resize', self.list_resize)
 
@@ -273,7 +276,8 @@ class Selecta(object):
         """Look for directory paths and urls, only called."""
 
         # pattern = r'(?P<path>[^\s=-]+/.+\.\w+)' # todo, parse filenames
-        pattern = r'(?P<path>[^\s=-]+/)(/?)'
+        # pattern = r'(?P<path>[^\s=-]+/)(/?)'
+        pattern = r'(?P<path>[^\s=-\\\']+/)(/?)'
 
         match = re.search(pattern, line)
         if match and hasattr(match, 'group'):
@@ -283,7 +287,7 @@ class Selecta(object):
         return None
 
     def parse_lines(self, infile: TextIOWrapper, reverse_order: bool,
-                    remove_bash_prefix: bool, remove_zsh_prefix: bool, remove_duplicates: bool) -> None:
+                    bash_mode: bool, zsh_mode: bool, remove_duplicates: bool) -> None:
         """Get the lines from the infile."""
 
         dirs: set[str] = set()
@@ -298,7 +302,7 @@ class Selecta(object):
         for line in lines_:
             line = line.strip()
             # remove bash/zsh line numbers from the beginning of the line
-            if remove_bash_prefix or remove_zsh_prefix:
+            if bash_mode or zsh_mode:
                 try:
                     line = line.split(None, 1)[1]
                 except IndexError:
@@ -346,15 +350,15 @@ class Selecta(object):
             modifiers.add('case')
         if self.path_mode_modifier:
             modifiers.add('path_mode')
-        if self.show_files_modifier:
-            modifiers.add('show_files')
+        # if self.show_files_modifier:
+        #     modifiers.add('show_files')
 
         if len(modifiers) > 0:
             self.modifier_display.set_text(f'[{", ".join(modifiers)}]')
         else:
             self.modifier_display.set_text('')
 
-    def filter_regex(self, pattern: str) -> list:
+    def filter_regex(self, pattern: str) -> list[urwid.Widget]:
         """Filter the list with a regular expression."""
 
         flags = re.IGNORECASE if not self.case_modifier else 0
@@ -375,9 +379,9 @@ class Selecta(object):
                             items.append(ItemWidgetPlain(line))
             else:
                 # use faster(?) list comprehension
-                items = [ItemWidgetPattern(line, match.group())
-                         if match and self.highlight_matches else ItemWidgetPlain(line)
-                         for line in use_list if (match := re_search(line))]
+                items: list[urwid.Widget] = [ItemWidgetPattern(line, match.group())
+                                             if match and self.highlight_matches else ItemWidgetPlain(line)
+                                             for line in use_list if (match := re_search(line))]
 
             if len(items) > 0:
                 return items
@@ -410,6 +414,21 @@ class Selecta(object):
                                 case_modifier=self.case_modifier, highlight_matches=self.highlight_matches)
                 for line in use_list if check_all_words(line, words)]
 
+    def filter_literal(self, search_text: str) -> list[urwid.Widget]:
+        search_text = search_text.strip('"')  # quote marks were only used to indicate literal search
+        items: list[urwid.Widget] = []
+        for line in self.lines:
+            if line.startswith(search_text):  # filter out matching lines
+                if self.highlight_matches:
+                    items.append(ItemWidgetLiteral(line, search_text))
+                else:
+                    items.append(ItemWidgetPlain(line))
+
+        if len(items) > 0:
+            return items
+        else:
+            return [urwid.Text(('empty_list', '- no matches -'))]
+
     def update_list(self, search_text: str = '') -> None:
         """Filter the list with the given search criteria."""
         use_list = self.dirs if self.path_mode_modifier else self.lines
@@ -420,11 +439,9 @@ class Selecta(object):
 
         # search for whole string if search_text begins with quotation mark
         elif search_text.startswith('"'):
-            search_text = search_text[1:]
-            self.update_item_list([
-                ItemWidgetStartswith(line, search_text) if self.highlight_matches else ItemWidgetPlain(line)
-                for line in use_list if search_text in line])
+            self.update_item_list(self.filter_literal(search_text))
 
+        # search for regexp if regexp modifier is set
         elif self.regexp_modifier:
             self.update_item_list(self.filter_regex(search_text))
 
@@ -477,9 +494,9 @@ class Selecta(object):
             self.toggle_modifier('path_mode_modifier')
             self.update_list()
 
-        elif input == 'ctrl f':
-            self.toggle_modifier('show_files_modifier')
-            self.update_list()
+        # elif input == 'ctrl f':
+        #     self.toggle_modifier('show_files_modifier')
+        #     self.update_list()
 
         elif input == 'backspace':
             self.search_edit.set_edit_text(self.search_edit.get_text()[0][:-1])
@@ -536,10 +553,10 @@ def main() -> None:
                         action='store_true', default=False,
                         help='highlight the part of each line which match the substrings or regexp')
 
-    parser.add_argument('--bash', action='store_true',
+    parser.add_argument('--bash', dest='bash_mode', action='store_true',
                         default=False, help='standard for bash history search, same as -b -i -d')
 
-    parser.add_argument('--zsh', action='store_true',
+    parser.add_argument('--zsh', dest='zsh_mode', action='store_true',
                         default=False, help='standard for zsh history search, same as -z -i -d')
 
     parser.add_argument('infile', nargs='?',
@@ -558,25 +575,19 @@ def main() -> None:
         parser.print_help()
         exit('\nYou must provide an infile!')
 
-    if args.bash:
-        args.remove_bash_prefix = True
-
-    if args.zsh:
-        args.remove_zsh_prefix = True
-
-    if args.bash or args.zsh:
+    if args.bash_mode or args.zsh_mode:
         args.reverse_order = True
         args.remove_duplicates = True
 
     Selecta(
         infile=args.infile,
         reverse_order=args.reverse_order,
-        remove_bash_prefix=args.remove_bash_prefix,
-        remove_zsh_prefix=args.remove_zsh_prefix,
+        bash_mode=args.bash_mode,
+        zsh_mode=args.zsh_mode,
         case_sensitive=args.case_sensitive,
         regexp=args.regexp,
         path_mode=args.path_mode,
-        show_files=args.show_files,
+        # show_files=args.show_files,
         remove_duplicates=args.remove_duplicates,
         highlight_matches=args.highlight_matches,
         # TODO support missing options from the original selector
