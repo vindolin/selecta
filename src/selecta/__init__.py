@@ -32,7 +32,7 @@ def debug(value, prefix: str = '') -> None:
         file.write(f'{prefix} {value}\n')
 
 
-palette = [
+palette: list[tuple[str, str, str, str, str, str]] = [
     ('head', '', '', '', '#bbb', '#618'),
     ('body', '', '', '', '#ddd', '#000'),
     ('focus', '', '', '', '#000', '#da0'),
@@ -95,7 +95,7 @@ class ItemWidgetPattern(ItemWidget):
 
 
 def mark_parts(subject_string: str, s_words: list[str], case_sensitive: bool, highlight_matches: bool) -> list[Union[str, tuple]]:
-    def wrap_part(part) -> Union[str, (tuple[str, str])]:
+    def wrap_part(part: 'str') -> Union[str, (tuple[str, str])]:
         return ('match', part) if highlight_matches else part
 
     flags = re.IGNORECASE if not case_sensitive else 0
@@ -137,7 +137,7 @@ class ItemWidgetWords(ItemWidget):
         )
         super().__init__(text)
 
-    def split_words(self, words, subject) -> list[str]:
+    def split_words(self, words: list[str], subject: str) -> list[str]:
         """Split the subject into pieces for later styling."""
         return [word for word in re.split(rf"({'|'.join(words)})", subject) if word]
 
@@ -147,7 +147,7 @@ class SearchEdit(urwid.Edit):
 
     signals = ['done', 'toggle_regexp_modifier', 'toggle_case_modifier']
 
-    def keypress(self, size, key) -> None:
+    def keypress(self, size: tuple[int], key: str) -> None:
         if key == 'enter':
             urwid.emit_signal(self, 'done', self.get_edit_text())
             return
@@ -173,9 +173,9 @@ class ResultList(urwid.ListBox):
     signals: list[str] = ['resize']
     last_size: Optional[tuple[int, int]]
 
-    def __init__(self, *args) -> None:
+    def __init__(self, body: urwid.ListWalker) -> None:
         self.last_size = None
-        urwid.ListBox.__init__(self, *args)
+        urwid.ListBox.__init__(self, body)
 
     def render(self, size: tuple[int, int], focus=False) -> Union[urwid.CompositeCanvas, urwid.SolidCanvas]:
         if size != self.last_size:
@@ -202,16 +202,17 @@ class Selecta(object):
     lines: list[str] = []
 
     def __init__(self, infile: TextIOWrapper, reverse_order: bool,
-                 remove_bash_prefix: bool = False, remove_zsh_prefix: bool = False,
-                 regexp: bool = False, case_sensitive: bool = False, remove_duplicates: bool = False,
-                 highlight_matches: bool = False, test_mode: bool = False) -> None:
+                 bash_mode: bool = False, zsh_mode: bool = False,
+                 case_sensitive: bool = False, regexp: bool = False,
+                 remove_duplicates: bool = False, highlight_matches: bool = False,
+                 test_mode: bool = False) -> None:
 
         self.highlight_matches = highlight_matches
         self.regexp_modifier = regexp
         self.case_modifier = case_sensitive
+        self.regexp_modifier = regexp
 
-        self.lines = self.parse_lines(infile, reverse_order,
-                                      remove_bash_prefix, remove_zsh_prefix, remove_duplicates)
+        self.lines = self.parse_lines(infile, reverse_order, bash_mode, zsh_mode, remove_duplicates)
         self.matching_line_count = len(self.lines)
 
         self.search_edit = SearchEdit(edit_text='')
@@ -355,8 +356,8 @@ class Selecta(object):
 
         words = search_text.split()
 
-        return [ItemWidgetWords(line, search_words=words,
-                                case_modifier=self.case_modifier, highlight_matches=self.highlight_matches)
+        return [ItemWidgetWords(line, search_words=words, case_modifier=self.case_modifier,
+                                highlight_matches=self.highlight_matches)
                 for line in self.lines if check_all_words(line, words)]
 
     def filter_literal(self, search_text: str) -> list[urwid.Widget]:
@@ -407,7 +408,7 @@ class Selecta(object):
     def edit_done(self, _) -> None:
         self.view.focus_position = 'body'
 
-    def on_unhandled_input(self, input: str) -> bool:
+    def on_unhandled_input(self, input: str | tuple[str, int, int, int]) -> bool:
         if isinstance(input, tuple):  # mouse events
             return False
 
@@ -460,11 +461,11 @@ def main() -> None:
                         action='store_true', default=False,
                         help='reverse the order of the lines')
 
-    parser.add_argument('-b', '--remove-bash-prefix',
+    parser.add_argument('-b', '--remove-bash-prefix', dest='bash_mode',
                         action='store_true', default=False,
                         help='remove the numeric prefix from bash history')
 
-    parser.add_argument('-z', '--remove-zsh-prefix',
+    parser.add_argument('-z', '--remove-zsh-prefix', dest='zsh_mode',
                         action='store_true', default=False,
                         help='remove the time prefix from zsh history')
 
@@ -484,12 +485,6 @@ def main() -> None:
                         action='store_true', default=False,
                         help='highlight the part of each line which match the substrings or regexp')
 
-    parser.add_argument('--bash', action='store_true',
-                        default=False, help='standard for bash history search, same as -b -i -d')
-
-    parser.add_argument('--zsh', action='store_true',
-                        default=False, help='standard for zsh history search, same as -z -i -d')
-
     parser.add_argument('infile', nargs='?',
                         type=argparse.FileType('r'), default=sys.stdin,
                         help='the file which lines you want to select eg. <(history)')
@@ -506,23 +501,17 @@ def main() -> None:
         parser.print_help()
         exit('\nYou must provide an infile!')
 
-    if args.bash:
-        args.remove_bash_prefix = True
-
-    if args.zsh:
-        args.remove_zsh_prefix = True
-
-    if args.bash or args.zsh:
+    if args.bash_mode or args.zsh_mode:
         args.reverse_order = True
         args.remove_duplicates = True
 
     Selecta(
         infile=args.infile,
         reverse_order=args.reverse_order,
-        remove_bash_prefix=args.remove_bash_prefix,
-        remove_zsh_prefix=args.remove_zsh_prefix,
-        regexp=args.regexp,
+        bash_mode=args.bash_mode,
+        zsh_mode=args.zsh_mode,
         case_sensitive=args.case_sensitive,
+        regexp=args.regexp,
         remove_duplicates=args.remove_duplicates,
         highlight_matches=args.highlight_matches,
         # TODO support missing options from the original selector

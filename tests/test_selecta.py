@@ -7,15 +7,15 @@ class TestSelecta(unittest.TestCase):
     def __init__(self, *args, **kwargs) -> None:
         super(TestSelecta, self).__init__(*args, **kwargs)
 
-    def run_test(self, file, input, reverse_order=False, remove_bash_prefix=False, remove_zsh_prefix=False,
+    def run_test(self, file, input, reverse_order=False, bash_mode=False, zsh_mode=False,
                  regexp=False, case_sensitive=False, remove_duplicates=False, highlight_matches=False) -> Selecta:
 
         with open(Path(__file__).parent / 'data' / file, 'r') as fh:
             selecta = Selecta(
                 infile=fh,
                 reverse_order=reverse_order,
-                remove_bash_prefix=remove_bash_prefix,
-                remove_zsh_prefix=remove_zsh_prefix,
+                bash_mode=bash_mode,
+                zsh_mode=zsh_mode,
                 regexp=regexp,
                 case_sensitive=case_sensitive,
                 remove_duplicates=remove_duplicates,
@@ -51,7 +51,7 @@ class TestSelecta(unittest.TestCase):
         self.assertEqual(selecta.matching_line_count, 1)
 
     def test_bash_prefix(self) -> None:
-        selecta = self.run_test('test_history.txt', r'^[^\d]+$', regexp=True, remove_bash_prefix=True, remove_duplicates=True)
+        selecta = self.run_test('test_history.txt', r'^[^\d]+$', regexp=True, bash_mode=True, remove_duplicates=True)
         self.assertEqual(selecta.matching_line_count, 76)
 
     def test_sentence(self) -> None:
