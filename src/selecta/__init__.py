@@ -9,7 +9,7 @@ import signal
 import struct
 import sys
 import termios
-from typing import Union
+from typing import Union, Optional
 
 import urwid
 
@@ -27,6 +27,7 @@ def inject_command(command: str) -> None:
 
 def debug(value, prefix: str = '') -> None:
     """only usded when debugging"""
+    return
     with codecs.open('/tmp/selecta.log', 'a', encoding='utf-8') as file:
         file.write(f'{prefix} {value}\n')
 
@@ -63,7 +64,7 @@ class ItemWidgetPlain(ItemWidget):
         super().__init__(text)
 
 
-class ItemWidgetStartswith(ItemWidget):
+class ItemWidgetLiteral(ItemWidget):
     """Widget that displays a line as is."""
     def __init__(self, line: str, search_text: str) -> None:
         self.line = line
@@ -125,8 +126,9 @@ def mark_parts(subject_string: str, s_words: list[str], case_sensitive: bool, hi
 
 class ItemWidgetWords(ItemWidget):
     """Widget that highlights the matching words of a line."""
-    def __init__(self, line, search_words, case_modifier, highlight_matches) -> None:
-        self.line = line
+    def __init__(self, line: str, search_words: list[str], case_modifier: bool, highlight_matches: bool) -> None:
+
+        # debug(f'line: {self.line_number}:{self.line}, search_words: {search_words}')
 
         text = urwid.AttrMap(
             urwid.Text(mark_parts(line, search_words, case_modifier, highlight_matches)),
@@ -168,13 +170,14 @@ class SearchEdit(urwid.Edit):
 
 class ResultList(urwid.ListBox):
     """List of the found lines."""
-    signals = ['resize']
+    signals: list[str] = ['resize']
+    last_size: Optional[tuple[int, int]]
 
     def __init__(self, *args) -> None:
         self.last_size = None
         urwid.ListBox.__init__(self, *args)
 
-    def render(self, size, focus=False) -> Union[urwid.CompositeCanvas, urwid.SolidCanvas]:
+    def render(self, size: tuple[int, int], focus=False) -> Union[urwid.CompositeCanvas, urwid.SolidCanvas]:
         if size != self.last_size:
             self.last_size = size
             urwid.emit_signal(self, 'resize', size)
@@ -187,7 +190,7 @@ class LineCountWidget(urwid.Text):
         super().__init__('')
         self.line_count = line_count
 
-    def update(self, matching_line_count) -> None:
+    def update(self, matching_line_count: int) -> None:
         """Update the widget with the current number of matching lines."""
         self.set_text(f'{matching_line_count}/{self.line_count}')
 
@@ -196,6 +199,7 @@ class Selecta(object):
     """The main class of Selecta."""
 
     line_widgets: list = [urwid.Widget]
+    lines: list[str] = []
 
     def __init__(self, infile: TextIOWrapper, reverse_order: bool,
                  remove_bash_prefix: bool = False, remove_zsh_prefix: bool = False,
@@ -292,20 +296,18 @@ class Selecta(object):
 
     def update_modifiers(self) -> None:
         """Update the modifier display"""
-        modifiers: list = []
+        modifiers: set[str] = set()
         if self.regexp_modifier:
-            modifiers.append('regexp')
+            modifiers.add('regexp')
         if self.case_modifier:
-            modifiers.append('case')
-        # if self.fuzzy_modifier:
-        #     modifiers.append('fuzzy')
+            modifiers.add('case')
 
         if len(modifiers) > 0:
             self.modifier_display.set_text(f'[{", ".join(modifiers)}]')
         else:
             self.modifier_display.set_text('')
 
-    def filter_regex(self, pattern: str) -> list:
+    def filter_regex(self, pattern: str) -> list[urwid.Widget]:
         """Filter the list with a regular expression."""
 
         flags = re.IGNORECASE if not self.case_modifier else 0
@@ -324,9 +326,9 @@ class Selecta(object):
                             items.append(ItemWidgetPlain(line))
             else:
                 # use faster(?) list comprehension
-                items = [ItemWidgetPattern(line, match.group())
-                         if match and self.highlight_matches else ItemWidgetPlain(line)
-                         for line in self.lines if (match := re_search(line))]
+                items: list[urwid.Widget] = [ItemWidgetPattern(line, match.group())
+                                             if match and self.highlight_matches else ItemWidgetPlain(line)
+                                             for line in self.lines if (match := re_search(line))]
 
             if len(items) > 0:
                 return items
@@ -339,7 +341,7 @@ class Selecta(object):
     def filter_words(self, search_text: str) -> list[urwid.Widget]:
         """Filter the list with a list of words."""
 
-        def check_all_words(subject, words) -> bool:
+        def check_all_words(subject: str, words: list[str]) -> bool:
             """Check if all words are in the subject."""
             if False:
                 if not self.case_modifier:
@@ -357,6 +359,21 @@ class Selecta(object):
                                 case_modifier=self.case_modifier, highlight_matches=self.highlight_matches)
                 for line in self.lines if check_all_words(line, words)]
 
+    def filter_literal(self, search_text: str) -> list[urwid.Widget]:
+        search_text = search_text.strip('"')  # quote marks were only used to indicate literal search
+        items: list[urwid.Widget] = []
+        for line in self.lines:
+            if line.startswith(search_text):  # filter out matching lines
+                if self.highlight_matches:
+                    items.append(ItemWidgetLiteral(line, search_text))
+                else:
+                    items.append(ItemWidgetPlain(line))
+
+        if len(items) > 0:
+            return items
+        else:
+            return [urwid.Text(('empty_list', '- no matches -'))]
+
     def update_list(self, search_text: str = '') -> None:
         """Filter the list with the given search criteria."""
 
@@ -366,11 +383,9 @@ class Selecta(object):
 
         # search for whole string if search_text begins with quotation mark
         elif search_text.startswith('"'):
-            search_text = search_text[1:]
-            self.update_item_list([
-                ItemWidgetStartswith(line, search_text) if self.highlight_matches else ItemWidgetPlain(line)
-                for line in self.lines if search_text in line])
+            self.update_item_list(self.filter_literal(search_text))
 
+        # search for regexp if regexp modifier is set
         elif self.regexp_modifier:
             self.update_item_list(self.filter_regex(search_text))
 
@@ -387,12 +402,12 @@ class Selecta(object):
         self.item_list.set_focus(0)
 
     def edit_change(self, _, search_text) -> None:
-        self.update_list(search_text)
+        self.update_list(search_text.strip())
 
     def edit_done(self, _) -> None:
         self.view.focus_position = 'body'
 
-    def on_unhandled_input(self, input) -> bool:
+    def on_unhandled_input(self, input: str) -> bool:
         if isinstance(input, tuple):  # mouse events
             return False
 
