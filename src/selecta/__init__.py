@@ -408,7 +408,7 @@ class Selecta(object):
     def edit_done(self, _) -> None:
         self.view.focus_position = 'body'
 
-    def on_unhandled_input(self, input: str | tuple[str, int, int, int]) -> bool:
+    def on_unhandled_input(self, input: Union[str, tuple[str, int, int, int]]) -> bool:
         if isinstance(input, tuple):  # mouse events
             return False
 
