@@ -127,6 +127,7 @@ def mark_parts(subject_string: str, s_words: list[str], case_sensitive: bool, hi
 class ItemWidgetWords(ItemWidget):
     """Widget that highlights the matching words of a line."""
     def __init__(self, line: str, search_words: list[str], case_modifier: bool, highlight_matches: bool) -> None:
+        self.line = line
 
         # debug(f'line: {self.line_number}:{self.line}, search_words: {search_words}')
 
