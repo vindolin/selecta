@@ -1,4 +1,4 @@
-"""Selecta 0.2.0"""
+"""Selecta 0.2.1"""
 
 import codecs
 import fcntl
@@ -13,7 +13,7 @@ from typing import Union, Optional
 
 import urwid
 
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 
 __all__ = []
 

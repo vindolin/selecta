@@ -45,7 +45,7 @@ bind -x '"\C-[{key}":"\selecta --bash -y <(history)"'
 bindkey -s "^[{key}" "selecta --zsh -y <(history)^M"
 ```
 
-Upgrade from older version to 0.2.0
+Upgrade from older version to 0.2.x
 -----------------------------------
 Delete your old keybinding from .bashrc/.zshrc and register the new version with:
 ```console
