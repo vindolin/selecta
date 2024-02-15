@@ -13,7 +13,7 @@ from typing import Union, Optional
 
 import urwid
 
-__version__ = '0.2.1'
+__version__ = '0.2.2'
 
 __all__ = []
 
@@ -32,7 +32,7 @@ def debug(value, prefix: str = '') -> None:
         file.write(f'{prefix} {value}\n')
 
 
-palette = [
+palette: list[tuple[str, str, str, str, str, str]] = [
     ('head', '', '', '', '#bbb', '#618'),
     ('body', '', '', '', '#ddd', '#000'),
     ('focus', '', '', '', '#000', '#da0'),
@@ -69,7 +69,7 @@ class ItemWidgetLiteral(ItemWidget):
     def __init__(self, line: str, search_text: str) -> None:
         self.line = line
         parts = [('match', part) if part == search_text else part
-                 for part in re.split(f'^({re.escape(search_text)})', self.line)]
+                 for part in re.split(f'({re.escape(search_text)})', self.line)]
         text = urwid.AttrMap(urwid.Text(parts), 'line', 'line_focus')
         super().__init__(text)
 
@@ -95,7 +95,7 @@ class ItemWidgetPattern(ItemWidget):
 
 
 def mark_parts(subject_string: str, s_words: list[str], case_sensitive: bool, highlight_matches: bool) -> list[Union[str, tuple]]:
-    def wrap_part(part) -> Union[str, (tuple[str, str])]:
+    def wrap_part(part: 'str') -> Union[str, (tuple[str, str])]:
         return ('match', part) if highlight_matches else part
 
     flags = re.IGNORECASE if not case_sensitive else 0
@@ -127,6 +127,7 @@ def mark_parts(subject_string: str, s_words: list[str], case_sensitive: bool, hi
 class ItemWidgetWords(ItemWidget):
     """Widget that highlights the matching words of a line."""
     def __init__(self, line: str, search_words: list[str], case_modifier: bool, highlight_matches: bool) -> None:
+        self.line = line
 
         # debug(f'line: {self.line_number}:{self.line}, search_words: {search_words}')
 
@@ -137,7 +138,7 @@ class ItemWidgetWords(ItemWidget):
         )
         super().__init__(text)
 
-    def split_words(self, words, subject) -> list[str]:
+    def split_words(self, words: list[str], subject: str) -> list[str]:
         """Split the subject into pieces for later styling."""
         return [word for word in re.split(rf"({'|'.join(words)})", subject) if word]
 
@@ -148,7 +149,7 @@ class SearchEdit(urwid.Edit):
     signals = ['done', 'toggle_case_modifier', 'toggle_regexp_modifier',
                'toggle_path_mode_modifier']  # , 'toggle_show_files_modifier'
 
-    def keypress(self, size, key) -> None:
+    def keypress(self, size: tuple[int], key: str) -> None:
         if key == 'enter':
             urwid.emit_signal(self, 'done', self.get_edit_text())
             return
@@ -181,11 +182,11 @@ class ResultList(urwid.ListBox):
     """List of the found lines."""
     signals = ['resize']
 
-    def __init__(self, *args) -> None:
+    def __init__(self, body: urwid.ListWalker) -> None:
         self.last_size = None
-        urwid.ListBox.__init__(self, *args)
+        urwid.ListBox.__init__(self, body)
 
-    def render(self, size, focus=False) -> Union[urwid.CompositeCanvas, urwid.SolidCanvas]:
+    def render(self, size: tuple[int, int], focus=False) -> Union[urwid.CompositeCanvas, urwid.SolidCanvas]:
         if size != self.last_size:
             self.last_size = size
             urwid.emit_signal(self, 'resize', size)
@@ -198,7 +199,7 @@ class LineCountWidget(urwid.Text):
         super().__init__('')
         self.line_count = line_count
 
-    def update(self, matching_line_count) -> None:
+    def update(self, matching_line_count: int) -> None:
         """Update the widget with the current number of matching lines."""
         self.set_text(f'{matching_line_count}/{self.line_count}')
 
@@ -219,8 +220,8 @@ class Selecta(object):
         # show_files: bool = False,
 
         self.highlight_matches = highlight_matches
-        self.case_modifier = case_sensitive
         self.regexp_modifier = regexp
+        self.case_modifier = case_sensitive
         self.path_mode_modifier = path_mode
         # self.show_files_modifier = show_files
 
@@ -287,7 +288,7 @@ class Selecta(object):
         return None
 
     def parse_lines(self, infile: TextIOWrapper, reverse_order: bool,
-                    bash_mode: bool, zsh_mode: bool, remove_duplicates: bool) -> None:
+                    remove_bash_prefix: bool, remove_zsh_prefix: bool, remove_duplicates: bool) -> list[str]:
         """Get the lines from the infile."""
 
         dirs: set[str] = set()
@@ -302,7 +303,7 @@ class Selecta(object):
         for line in lines_:
             line = line.strip()
             # remove bash/zsh line numbers from the beginning of the line
-            if bash_mode or zsh_mode:
+            if remove_bash_prefix or remove_zsh_prefix:
                 try:
                     line = line.split(None, 1)[1]
                 except IndexError:
@@ -394,7 +395,7 @@ class Selecta(object):
     def filter_words(self, search_text: str) -> list[urwid.Widget]:
         """Filter the list with a list of words."""
 
-        def check_all_words(subject, words) -> bool:
+        def check_all_words(subject: str, words: list[str]) -> bool:
             """Check if all words are in the subject."""
             if False:
                 if not self.case_modifier:
@@ -463,7 +464,7 @@ class Selecta(object):
     def edit_done(self, _) -> None:
         self.view.focus_position = 'body'
 
-    def on_unhandled_input(self, input) -> bool:
+    def on_unhandled_input(self, input: Union[str, tuple[str, int, int, int]]) -> bool:
         if isinstance(input, tuple):  # mouse events
             return False
 
@@ -503,6 +504,12 @@ class Selecta(object):
             self.search_edit.set_edit_pos(len(self.search_edit.get_text()[0]))
             self.view.set_focus('header')
 
+        elif input == 'f1':
+            if (self.view.get_footer() is None):
+                self.view.set_footer(urwid.AttrMap(urwid.Text(f'selecta v{__version__}', align='center'), 'head'))
+            else:
+                self.view.set_footer(None)
+
         elif input == 'esc':
             self.view.set_focus('header')
 
@@ -521,11 +528,11 @@ def main() -> None:
                         action='store_true', default=False,
                         help='reverse the order of the lines')
 
-    parser.add_argument('-b', '--remove-bash-prefix',
+    parser.add_argument('-b', '--remove-bash-prefix', dest='bash_mode',
                         action='store_true', default=False,
                         help='remove the numeric prefix from bash history')
 
-    parser.add_argument('-z', '--remove-zsh-prefix',
+    parser.add_argument('-z', '--remove-zsh-prefix', dest='zsh_mode',
                         action='store_true', default=False,
                         help='remove the time prefix from zsh history')
 
@@ -552,12 +559,6 @@ def main() -> None:
     parser.add_argument('-y', '--highlight-matches',
                         action='store_true', default=False,
                         help='highlight the part of each line which match the substrings or regexp')
-
-    parser.add_argument('--bash', dest='bash_mode', action='store_true',
-                        default=False, help='standard for bash history search, same as -b -i -d')
-
-    parser.add_argument('--zsh', dest='zsh_mode', action='store_true',
-                        default=False, help='standard for zsh history search, same as -z -i -d')
 
     parser.add_argument('infile', nargs='?',
                         type=argparse.FileType('r'), default=sys.stdin,
