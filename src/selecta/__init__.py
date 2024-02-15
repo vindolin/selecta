@@ -180,7 +180,8 @@ class SearchEdit(urwid.Edit):
 
 class ResultList(urwid.ListBox):
     """List of the found lines."""
-    signals = ['resize']
+    signals: list[str] = ['resize']
+    last_size: Optional[tuple[int, int]]
 
     def __init__(self, body: urwid.ListWalker) -> None:
         self.last_size = None
