@@ -58,3 +58,5 @@ target/
 selecta.code-workspace
 .vscode/settings.json
 _ignore/
+src/selecta/__init__.c
+src/selecta/selecta
