@@ -5,8 +5,8 @@ import string
 from selecta import inject_command
 
 shells = {
-    'bash': {'command_tpl': r"""bind -x '"\C-[{key}":"\selecta --bash -y <(history)"'"""},
-    'zsh': {'command_tpl': r'''bindkey -s "^[{key}" "selecta --zsh -y <(history 0)^M"'''},
+    'bash': {'command_tpl': r"""bind -x '"\C-[{key}":"\selecta -b -y <(history)"'"""},
+    'zsh': {'command_tpl': r'''bindkey -s "^[{key}" "selecta -z -y <(history 0)^M"'''},
 }
 
 

@@ -13,7 +13,7 @@ from typing import Union, Optional
 
 import urwid
 
-__version__ = '0.2.1'
+__version__ = '0.2.2'
 
 __all__ = []
 
@@ -443,6 +443,12 @@ class Selecta(object):
             self.search_edit.set_edit_text(self.search_edit.get_text()[0][:-1])
             self.search_edit.set_edit_pos(len(self.search_edit.get_text()[0]))
             self.view.set_focus('header')
+
+        elif input == 'f1':
+            if (self.view.get_footer() is None):
+                self.view.set_footer(urwid.AttrMap(urwid.Text(f'selecta v{__version__}', align='center'), 'head'))
+            else:
+                self.view.set_footer(None)
 
         elif input == 'esc':
             self.view.set_focus('header')

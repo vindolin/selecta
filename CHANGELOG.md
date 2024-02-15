@@ -1,4 +1,7 @@
 # Changelog
+## 0.2.2:
+ - fix keybinding command
+
 ## 0.2.1:
  - bugfix for AttributeError in ItemWidgetWords
 

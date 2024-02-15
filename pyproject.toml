@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "selecta"
-version = "0.2.1"
+version = "0.2.2"
 license = {file = "LICENSE.txt"}
 authors = [
   {name="Thomas Schüßler", email="vindolin@gmail.com" },
