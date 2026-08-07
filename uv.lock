@@ -1,0 +1,45 @@
+version = 1
+revision = 3
+requires-python = ">=3.9"
+
+[[package]]
+name = "selecta"
+version = "0.2.2"
+source = { editable = "." }
+dependencies = [
+    { name = "urwid" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "urwid", specifier = ">=2.2.0" }]
+
+[[package]]
+name = "typing-extensions"
+version = "4.16.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f6/cc/6253133b5bb138fc3306cebfbda2c520f545d36b5be2c7255cc528bb45d6/typing_extensions-4.16.0.tar.gz", hash = "sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5", size = 113555, upload-time = "2026-07-02T08:40:05.92Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/49/d3/b8441a820a491ddfc024b0b0cf0393375b75ea13866d9c66727e54c2fc80/typing_extensions-4.16.0-py3-none-any.whl", hash = "sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8", size = 45571, upload-time = "2026-07-02T08:40:04.659Z" },
+]
+
+[[package]]
+name = "urwid"
+version = "4.0.8"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions" },
+    { name = "wcwidth" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d4/6a/229b3fca37e146bc4ad763753ae176de866571230b255a11d5829be1fcfc/urwid-4.0.8.tar.gz", hash = "sha256:3cea5748b936a223c9045bcee46dc1a0ec4cbce4a09bd7594974212207b737d4", size = 878866, upload-time = "2026-07-26T11:28:54.509Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/14/b4/55e951958017b6c6fc5f703dea6d27ec1af4a9714171aadfd83547e001be/urwid-4.0.8-py3-none-any.whl", hash = "sha256:0941d6a4c3c470f7c2ace709e2d62f32f02218076fbe695afa2fb230b0b91441", size = 305959, upload-time = "2026-07-26T11:28:52.709Z" },
+]
+
+[[package]]
+name = "wcwidth"
+version = "0.8.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/34/74/c6428f875774288bec1396f5bfcbc2d925700a4dad61727fd5f2b12f249d/wcwidth-0.8.2.tar.gz", hash = "sha256:91fbef97204b96a3d4d421609b80340b760cf33e26da123ff243d76b1fda8dda", size = 1466253, upload-time = "2026-06-29T18:11:11.601Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/96/42/3e5985a0a7e57de470b320c6d6a1a67c844f6737a587f3d44dd13d1819e7/wcwidth-0.8.2-py3-none-any.whl", hash = "sha256:d63947694a0539a1d51e01eda7caf800c291020e6cdd7e28ad7b14dd33ad4f85", size = 323166, upload-time = "2026-06-29T18:11:09.888Z" },
+]

@@ -1,4 +1,4 @@
-"""Selecta 0.2.1"""
+"""Selecta 0.2.2"""
 
 import codecs
 import fcntl
@@ -17,13 +17,20 @@ __version__ = '0.2.2'
 
 __all__ = []
 
+the_command = None
+
 
 def inject_command(command: str) -> None:
     """Inject the line into the terminal."""
     fd = sys.stdin.fileno()
-    for c in (struct.pack('B', c) for c in os.fsencode(command)):
-        fcntl.ioctl(fd, termios.TIOCSTI, c)
+    try:
+        for c in (struct.pack('B', c) for c in os.fsencode(command)):
+            fcntl.ioctl(fd, termios.TIOCSTI, c)
+    except Exception as e:
+        print(f'Error injecting command: {e}.\nTry enabling TIOCSTI calling "sudo sysctl -w dev.tty.legacy_tiocsti=1"', file=sys.stderr)
 
+    finally:
+        os.close(fd)
 
 def debug(value, prefix: str = '') -> None:
     """only usded when debugging"""
@@ -427,7 +434,8 @@ class Selecta(object):
             self.view.set_header(urwid.AttrMap(
                 urwid.Text(f'selected: {line}'), 'head'))
 
-            inject_command(line)
+            # inject_command(line)
+            globals()['the_command'] = line
             raise urwid.ExitMainLoop()
 
         elif input == 'ctrl a':
@@ -524,7 +532,10 @@ def main() -> None:
         # TODO support missing options from the original selector
         # TODO directory history would be sweet!
     )
+    if the_command is not None:
+        inject_command(the_command)
 
 
 if __name__ == '__main__':
     main()
+
