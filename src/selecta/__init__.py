@@ -21,14 +21,19 @@ the_command = None
 
 
 def inject_command(command: str) -> None:
-    """Inject the line into the terminal."""
+    """Inject the line into the terminal using TIOCSTI (legacy, disabled on Linux 6.2+)."""
     fd = sys.stdin.fileno()
     try:
         for c in (struct.pack('B', c) for c in os.fsencode(command)):
             fcntl.ioctl(fd, termios.TIOCSTI, c)
     except Exception as e:
-        print(f'Error injecting command: {e}.\nTry enabling TIOCSTI calling "sudo sysctl -w dev.tty.legacy_tiocsti=1"', file=sys.stderr)
-
+        print(
+            f'Error injecting command: {e}.\n'
+            'TIOCSTI is disabled on modern Linux kernels (6.2+).\n'
+            'Use --print (-p) mode with the shell wrapper function instead.\n'
+            'See https://github.com/vindolin/selecta for updated setup instructions.',
+            file=sys.stderr,
+        )
     finally:
         os.close(fd)
 
@@ -213,7 +218,8 @@ class Selecta(object):
                  bash_mode: bool = False, zsh_mode: bool = False,
                  case_sensitive: bool = False, regexp: bool = False,
                  remove_duplicates: bool = False, highlight_matches: bool = False,
-                 test_mode: bool = False) -> None:
+                 test_mode: bool = False,
+                 screen: Optional[urwid.raw_display.Screen] = None) -> None:
 
         self.highlight_matches = highlight_matches
         self.regexp_modifier = regexp
@@ -247,7 +253,13 @@ class Selecta(object):
         urwid.connect_signal(self.listbox, 'resize', self.list_resize)
 
         self.update_modifiers()
-        self.loop = urwid.MainLoop(self.view, palette, unhandled_input=self.on_unhandled_input)
+        loop_kwargs = dict(
+            unhandled_input=self.on_unhandled_input,
+        )
+        if screen is not None:
+            loop_kwargs['screen'] = screen
+
+        self.loop = urwid.MainLoop(self.view, palette, **loop_kwargs)
 
         # find out what this pylint error means (happens from >=2.2.0)
         # Cannot access member "set_terminal_properties"
@@ -507,6 +519,10 @@ def main() -> None:
     parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {__version__}',
                         help='print selecta version')
 
+    parser.add_argument('-p', '--print', dest='print_result',
+                        action='store_true', default=False,
+                        help='print the selected command to stdout (use with shell wrapper for TIOCSTI-free operation)')
+
     args = parser.parse_args()
 
     # debug('\033[2J')
@@ -520,6 +536,16 @@ def main() -> None:
         args.reverse_order = True
         args.remove_duplicates = True
 
+    # In print mode, redirect the TUI to /dev/tty so stdout is free for the result
+    screen = None
+    if args.print_result:
+        try:
+            tty_output = open('/dev/tty', 'w')
+            screen = urwid.raw_display.Screen(output=tty_output)
+        except (IOError, OSError):
+            print('Error: could not open /dev/tty for TUI output', file=sys.stderr)
+            sys.exit(1)
+
     Selecta(
         infile=args.infile,
         reverse_order=args.reverse_order,
@@ -529,11 +555,15 @@ def main() -> None:
         regexp=args.regexp,
         remove_duplicates=args.remove_duplicates,
         highlight_matches=args.highlight_matches,
+        screen=screen,
         # TODO support missing options from the original selector
         # TODO directory history would be sweet!
     )
     if the_command is not None:
-        inject_command(the_command)
+        if args.print_result:
+            print(the_command)
+        else:
+            inject_command(the_command)
 
 
 if __name__ == '__main__':

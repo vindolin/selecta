@@ -32,24 +32,84 @@ Installation
 ```console
 pip install selecta
 ```
-Install the keyboard shortcut ALT+{key}:
+
+Install the keyboard shortcut Alt+{key}:
 
 ```console
 selecta_add_keybinding {the alt key you want to use}
 ```
 
-This will append one of the following lines to your ~/.bashrc/zshrc:
+This appends a shell wrapper function and keybinding to your `~/.bashrc` or `~/.zshrc`.
+
+**How it works (TIOCSTI-free)**: Instead of using the legacy `TIOCSTI` ioctl (disabled on Linux 6.2+),
+selecta now uses the same approach as `fzf`: the TUI draws to `/dev/tty`, and the selected command
+is printed to stdout. A shell wrapper function captures this output and uses shell-native readline
+commands to place the text on your prompt.
+
+### Manual shell setup
+
+If you prefer to set up the integration manually, add the following to your rc file:
+
+**Bash** (`~/.bashrc`):
+
+```bash
+# selecta shell integration (TIOCSTI-free)
+selecta_insert() {
+  local result
+  result=$(selecta -b -y -p <(history))
+  if [[ -n "$result" ]]; then
+    READLINE_LINE="${result}${READLINE_LINE}"
+    READLINE_POINT=${#result}
+  fi
+}
+bind -x '"\C-[s": selecta_insert'
+```
+
+**Zsh** (`~/.zshrc`):
+
+```zsh
+# selecta shell integration (TIOCSTI-free)
+selecta_insert() {
+  local result
+  result=$(selecta -z -y -p <(history 0))
+  if [[ -n "$result" ]]; then
+    LBUFFER="${result}${LBUFFER}"
+  fi
+}
+zle -N selecta_insert
+bindkey '^[s' selecta_insert
+```
+
+**Fish** (`~/.config/fish/config.fish`):
+
+```fish
+# selecta shell integration (TIOCSTI-free)
+function selecta_insert
+  set -l result (PYTHON_GIL=1 selecta -z -y -p (history | cut -d " " -f 1 --complement | psub))
+  if test -n "$result"
+    commandline -r "$result"(commandline)
+  end
+end
+bind \es selecta_insert
+```
+
+Replace `s` with your preferred key. After adding, run `source ~/.bashrc` (or `source ~/.zshrc`,
+or `source ~/.config/fish/config.fish`) or open a new terminal.
+
+### Legacy TIOCSTI mode
+
+If you're on an older kernel and prefer the old behavior, selecta still supports TIOCSTI
+as a fallback (just omit the `-p` flag). To re-enable TIOCSTI on Linux < 6.2:
 
 ```console
-bind -x '"\C-[{key}":"\selecta -b -y <(history)"'
-bindkey -s "^[{key}" "selecta -z -y <(history)^M"
+sudo sysctl -w dev.tty.legacy_tiocsti=1
 ```
 
 Upgrade from older version to 0.2.x
 -----------------------------------
-Delete your old keybinding from .bashrc/.zshrc and register the new version with:
+Delete your old keybinding from .bashrc/.zshrc/config.fish and register the new version with:
 ```console
-selecta_add_keybinding
+selecta_add_keybinding {key}
 ```
 
 
@@ -57,8 +117,7 @@ selecta_add_keybinding
 -------------
 
 ```
-    usage: selecta [-h] [-i] [-b] [-z] [-e] [-a] [-d] [-y] [--bash] [--zsh]
-                   [infile]
+    usage: selecta [-h] [-i] [-b] [-z] [-r] [-a] [-d] [-y] [-p] [infile]
 
     positional arguments:
       infile                the file which lines you want to select eg. <(history)
@@ -70,12 +129,14 @@ selecta_add_keybinding
                             remove the numeric prefix from bash history
       -z, --remove-zsh-prefix
                             remove the time prefix from zsh history
-      -e, --regexp          start in regexp mode
+      -r, --regexp          start in regexp mode
       -a, --case-sensitive  start in case-sensitive mode
       -d, --remove-duplicates
                             remove duplicated lines
-      -y, --show-matches    highlight the part of each line which matches the
+      -y, --highlight-matches
+                            highlight the part of each line which matches the
                             substrings or regexp
-      --bash                standard for bash history search, same as -b -i -d
-      --zsh                 standard for zsh history search, same as -b -i -d
+      -p, --print           print the selected command to stdout
+                            (use with shell wrapper for TIOCSTI-free operation)
+      -v, --version         print selecta version
 ```
