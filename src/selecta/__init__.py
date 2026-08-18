@@ -106,49 +106,63 @@ class ItemWidgetPattern(ItemWidget):
         super().__init__(text)
 
 
-def mark_parts(subject_string: str, s_words: list[str], case_sensitive: bool, highlight_matches: bool) -> list[Union[str, tuple]]:
+def mark_parts(subject_string: str, s_words: list[str], case_sensitive: bool,
+               highlight_matches: bool, split_re=None) -> list[Union[str, tuple]]:
+    """Split the subject on the search words, marking the matching parts.
+
+    ``split_re`` is an optional precompiled regex; when given it is reused
+    instead of building/recompiling the pattern here (the caller can compile
+    it once per keystroke rather than once per line).
+    """
     def wrap_part(part: 'str') -> Union[str, (tuple[str, str])]:
         return ('match', part) if highlight_matches else part
 
-    flags = re.IGNORECASE if not case_sensitive else 0
+    if split_re is None:
+        flags = re.IGNORECASE if not case_sensitive else 0
+        split_re = re.compile(rf"({'|'.join([re.escape(word) for word in s_words])})", flags)
 
-    # split sub string at word boundaries
-    s_parts = ([s_word for s_word in
-                re.split(rf"({'|'.join([re.escape(word) for word in s_words])})",
-                         subject_string, flags=flags) if s_word])
+    # split subject at word boundaries
+    s_parts = [s_word for s_word in split_re.split(subject_string) if s_word]
 
     # create list of search words as lookup list,
     s_words_x = s_words if case_sensitive else [s_word.lower()
                                                 for s_word in s_words]
 
-    # generate list of the word parts and mark the search words
-    if False:
-        # use regular for loop
-        l_parts = []
-        for word in s_parts:
-            word_x = word if case_sensitive else word.lower()
-            l_parts.append(wrap_part(word) if word_x in s_words_x else word)
-    else:
-        # use faster(?) list comprehension
-        l_parts = [wrap_part(word) if (word if case_sensitive else word.lower())
-                   in s_words_x else word for word in s_parts]
+    # mark the search words (list comprehension)
+    l_parts = [wrap_part(word) if (word if case_sensitive else word.lower())
+               in s_words_x else word for word in s_parts]
 
     return l_parts
 
 
 class ItemWidgetWords(ItemWidget):
-    """Widget that highlights the matching words of a line."""
-    def __init__(self, line: str, search_words: list[str], case_modifier: bool, highlight_matches: bool) -> None:
+    """Widget that highlights the matching words of a line.
+
+    The line is rendered as-is until the widget is actually drawn; only then
+    is it split and highlighted. Since urwid only renders the visible rows,
+    lines that are never shown never pay the split cost.
+    """
+    def __init__(self, line: str, search_words: list[str], case_modifier: bool,
+                 highlight_matches: bool, split_re=None) -> None:
         self.line = line
+        self.search_words = search_words
+        self.case_modifier = case_modifier
+        self.highlight_matches = highlight_matches
+        self.split_re = split_re
 
-        # debug(f'line: {self.line_number}:{self.line}, search_words: {search_words}')
-
-        text = urwid.AttrMap(
-            urwid.Text(mark_parts(line, search_words, case_modifier, highlight_matches)),
-            'line',
-            {'match': 'match_focus', None: 'line_focus'}
-        )
+        # start with the plain line so layout/rows are correct before decoration
+        self._text = urwid.Text(line)
+        self._decorated = False
+        text = urwid.AttrMap(self._text, 'line', {'match': 'match_focus', None: 'line_focus'})
         super().__init__(text)
+
+    def render(self, size, focus=False):
+        if not self._decorated and self.highlight_matches:
+            self._decorated = True
+            parts = mark_parts(self.line, self.search_words, self.case_modifier,
+                               True, self.split_re)
+            self._text.set_text(parts)
+        return super().render(size, focus)
 
     def split_words(self, words: list[str], subject: str) -> list[str]:
         """Split the subject into pieces for later styling."""
@@ -213,6 +227,7 @@ class Selecta(object):
 
     line_widgets: list = [urwid.Widget]
     lines: list[str] = []
+    lower_lines: list[str] = []
 
     def __init__(self, infile: TextIOWrapper, reverse_order: bool,
                  bash_mode: bool = False, zsh_mode: bool = False,
@@ -228,7 +243,13 @@ class Selecta(object):
         self.regexp_modifier = regexp
 
         self.lines = self.parse_lines(infile, reverse_order, bash_mode, zsh_mode, remove_duplicates)
+        # pre-lower the lines once so case-insensitive filtering never has to
+        # call .lower() on every line on every keystroke
+        self.lower_lines = [line.lower() for line in self.lines]
         self.matching_line_count = len(self.lines)
+
+        # cache of the last words-mode filter, used to narrow the scan while typing
+        self._filter_cache = None
 
         self.search_edit = SearchEdit(edit_text=initial_query)
         self.modifier_display = urwid.Text('')
@@ -360,26 +381,37 @@ class Selecta(object):
         except re.error as err:
             return [urwid.Text(('empty_list', f'Error in regular epression: {err}'))]
 
-    def filter_words(self, search_text: str) -> list[urwid.Widget]:
-        """Filter the list with a list of words."""
+    def filter_words(self, search_text: str, indices=None) -> tuple[list[urwid.Widget], list[int]]:
+        """Filter the list with a list of words.
 
-        def check_all_words(subject: str, words: list[str]) -> bool:
-            """Check if all words are in the subject."""
-            if False:
-                if not self.case_modifier:
-                    return all(word.lower() in subject.lower() for word in words)
-                else:
-                    return all(word in subject for word in words)
-            else:
-                # slightly faster
-                return (all(word.lower() in subject.lower() for word in words)
-                        if not self.case_modifier else all(word in subject for word in words))
+        ``indices`` optionally restricts the scan to a subset of line indices
+        (used to narrow the previous result while the query is being extended).
+        Returns the widgets and the indices of the matching lines.
+        """
+        if indices is None:
+            indices = range(len(self.lines))
 
         words = search_text.split()
 
-        return [ItemWidgetWords(line, search_words=words, case_modifier=self.case_modifier,
-                                highlight_matches=self.highlight_matches)
-                for line in self.lines if check_all_words(line, words)]
+        if self.case_modifier:
+            matched = [i for i in indices
+                       if all(word in self.lines[i] for word in words)]
+        else:
+            lowered_words = [word.lower() for word in words]
+            matched = [i for i in indices
+                       if all(word in self.lower_lines[i] for word in lowered_words)]
+
+        if self.highlight_matches:
+            # compile the split regex once per keystroke, not once per line
+            split_re = re.compile(rf"({'|'.join(re.escape(word) for word in words)})",
+                                  re.IGNORECASE if not self.case_modifier else 0)
+            items = [ItemWidgetWords(self.lines[i], words, self.case_modifier, True, split_re)
+                     for i in matched]
+        else:
+            # no highlighting needed: skip the split entirely
+            items = [ItemWidgetPlain(self.lines[i]) for i in matched]
+
+        return items, matched
 
     def filter_literal(self, search_text: str) -> list[urwid.Widget]:
         search_text = search_text.strip('"')  # quote marks were only used to indicate literal search
@@ -401,19 +433,36 @@ class Selecta(object):
 
         # show all lines if search_text is empty
         if search_text == '' or search_text == '"' or search_text == '""':
+            self._filter_cache = None
             self.update_item_list([ItemWidgetPlain(line) for line in self.lines])
 
         # search for whole string if search_text begins with quotation mark
         elif search_text.startswith('"'):
+            self._filter_cache = None
             self.update_item_list(self.filter_literal(search_text))
 
         # search for regexp if regexp modifier is set
         elif self.regexp_modifier:
+            self._filter_cache = None
             self.update_item_list(self.filter_regex(search_text))
 
         # split search into words and search for each word
         else:
-            self.update_item_list(self.filter_words(search_text))
+            # while typing, extend the previous result instead of rescanning all
+            # lines: any line matching the longer query also matched the shorter
+            # one, so the new match set is a subset of the previous one
+            indices = None
+            cache = self._filter_cache
+            if (cache is not None
+                    and cache[1] == 'words'
+                    and cache[2] == self.case_modifier
+                    and search_text.startswith(cache[0])
+                    and search_text != cache[0]):
+                indices = cache[3]
+
+            items, matched = self.filter_words(search_text, indices=indices)
+            self._filter_cache = (search_text, 'words', self.case_modifier, matched)
+            self.update_item_list(items)
 
         # show empty list message if no items are found
         if len(self.item_list) == 0:

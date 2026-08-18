@@ -1,6 +1,6 @@
 import unittest
 from pathlib import Path
-from selecta import Selecta, mark_parts
+from selecta import Selecta, mark_parts, ItemWidgetPlain, ItemWidgetWords
 
 
 class TestSelecta(unittest.TestCase):
@@ -84,6 +84,44 @@ class TestSelecta(unittest.TestCase):
             )
         self.assertEqual(selecta.search_edit.get_edit_text(), '')
         self.assertEqual(selecta.matching_line_count, len(selecta.lines))
+
+    def _selecta(self, **kwargs) -> Selecta:
+        with open(Path(__file__).parent / 'data' / 'test.txt', 'r') as fh:
+            return Selecta(infile=fh, reverse_order=False, test_mode=True, **kwargs)
+
+    def test_narrowing_matches_full_scan(self) -> None:
+        # extending the query narrows the previous result...
+        selecta = self._selecta()
+        selecta.edit_change(None, 'app')
+        selecta.edit_change(None, 'app bana')  # extension -> narrows
+        narrowed = selecta.matching_line_count
+
+        # ...and must produce the same result as a fresh full scan
+        fresh = self._selecta()
+        fresh.edit_change(None, 'app bana')  # full scan
+        self.assertEqual(narrowed, fresh.matching_line_count)
+        self.assertGreater(narrowed, 0)
+
+    def test_narrowing_not_reused_after_deletion(self) -> None:
+        # deleting a character must fall back to a full scan
+        selecta = self._selecta()
+        selecta.edit_change(None, 'app bana')
+        selecta.edit_change(None, 'app ban')  # shorter -> full rescan
+        after_delete = selecta.matching_line_count
+
+        fresh = self._selecta()
+        fresh.edit_change(None, 'app ban')  # full scan
+        self.assertEqual(after_delete, fresh.matching_line_count)
+
+    def test_words_no_highlight_uses_plain_widgets(self) -> None:
+        selecta = self._selecta()
+        selecta.edit_change(None, 'app')
+        self.assertIsInstance(selecta.item_list[0], ItemWidgetPlain)
+
+    def test_words_highlight_uses_words_widgets(self) -> None:
+        selecta = self._selecta(highlight_matches=True)
+        selecta.edit_change(None, 'app')
+        self.assertIsInstance(selecta.item_list[0], ItemWidgetWords)
 
     def test_mark_parts1(self) -> None:
         parts = mark_parts('orange cherry Orange apple Banana banana Pear apple', ['bana', 'apple', 'pear'], case_sensitive=False, highlight_matches=True)
