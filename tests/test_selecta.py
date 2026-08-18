@@ -55,7 +55,7 @@ class TestSelecta(unittest.TestCase):
         self.assertEqual(selecta.matching_line_count, 76)
 
     def test_sentence(self) -> None:
-        selecta = self.run_test('test.txt', '"orange cherry apple banana banana pe')
+        selecta = self.run_test('test.txt', '"apple orange cherry')
         self.assertEqual(selecta.matching_line_count, 1)
 
     def test_empty_file(self) -> None:
@@ -122,6 +122,43 @@ class TestSelecta(unittest.TestCase):
         selecta = self._selecta(highlight_matches=True)
         selecta.edit_change(None, 'app')
         self.assertIsInstance(selecta.item_list[0], ItemWidgetWords)
+
+    def test_toggle_case_from_body_refilters(self) -> None:
+        selecta = self._selecta()
+        selecta.search_edit.set_edit_text('Orange')
+        selecta.edit_change(None, 'Orange')          # case-insensitive
+        selecta.on_unhandled_input('ctrl a')         # toggle to case-sensitive
+        toggled = selecta.matching_line_count
+
+        fresh = self._selecta(case_sensitive=True)
+        fresh.edit_change(None, 'Orange')
+        self.assertEqual(toggled, fresh.matching_line_count)
+
+    def test_toggle_regex_from_body_refilters(self) -> None:
+        selecta = self._selecta()
+        selecta.search_edit.set_edit_text('Or.+bana')
+        selecta.edit_change(None, 'Or.+bana')        # words mode
+        selecta.on_unhandled_input('ctrl r')         # toggle regexp on
+        toggled = selecta.matching_line_count
+
+        fresh = self._selecta(regexp=True)
+        fresh.edit_change(None, 'Or.+bana')
+        self.assertEqual(toggled, fresh.matching_line_count)
+
+    def test_regex_no_match_count_zero(self) -> None:
+        selecta = self._selecta(regexp=True)
+        selecta.edit_change(None, 'zzz_nothing')
+        self.assertEqual(selecta.matching_line_count, 0)
+
+    def test_regex_error_count_zero(self) -> None:
+        selecta = self._selecta(regexp=True)
+        selecta.edit_change(None, '(')
+        self.assertEqual(selecta.matching_line_count, 0)
+
+    def test_literal_no_match_count_zero(self) -> None:
+        selecta = self._selecta()
+        selecta.edit_change(None, '"zzz_nothing')
+        self.assertEqual(selecta.matching_line_count, 0)
 
     def test_mark_parts1(self) -> None:
         parts = mark_parts('orange cherry Orange apple Banana banana Pear apple', ['bana', 'apple', 'pear'], case_sensitive=False, highlight_matches=True)

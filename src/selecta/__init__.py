@@ -324,10 +324,15 @@ class Selecta(object):
         return lines
     # [ItemWidgetPlain(line) for line in self.lines]
 
-    def update_item_list(self, items: list) -> None:
-        """Update the list of items."""
+    def update_item_list(self, items: list, count: Optional[int] = None) -> None:
+        """Update the list of items.
+
+        ``count`` optionally overrides the match count shown in the header; it's
+        needed when ``items`` contains placeholder widgets (e.g. an "no matches"
+        message) that don't represent real matches.
+        """
         self.item_list[:] = items  # itemList is a SimpleListWalker which monitors the list for changes
-        self.matching_line_count = len(self.item_list)
+        self.matching_line_count = count if count is not None else len(self.item_list)
         self.line_count_display.update(self.matching_line_count)
 
     def list_resize(self, size) -> None:
@@ -350,36 +355,32 @@ class Selecta(object):
         else:
             self.modifier_display.set_text('')
 
-    def filter_regex(self, pattern: str) -> list[urwid.Widget]:
-        """Filter the list with a regular expression."""
+    def filter_regex(self, pattern: str) -> tuple[list[urwid.Widget], int]:
+        """Filter the list with a regular expression.
+
+        Returns the widgets (including any placeholder message) and the number
+        of actual matches.
+        """
 
         flags = re.IGNORECASE if not self.case_modifier else 0
 
         try:
             re_search = re.compile(pattern, flags).search
 
-            if False:
-                items = []
-                for line in self.lines:
-                    match = re_search(line)
-                    if match:
-                        if self.highlight_matches:
-                            items.append(ItemWidgetPattern(line, match.group()))
-                        else:
-                            items.append(ItemWidgetPlain(line))
-            else:
-                # use faster(?) list comprehension
+            if self.highlight_matches:
                 items: list[urwid.Widget] = [ItemWidgetPattern(line, match.group())
-                                             if match and self.highlight_matches else ItemWidgetPlain(line)
                                              for line in self.lines if (match := re_search(line))]
+            else:
+                items = [ItemWidgetPlain(line)
+                         for line in self.lines if re_search(line)]
 
             if len(items) > 0:
-                return items
+                return items, len(items)
             else:
-                return [urwid.Text(('empty_list', '- no matches -'))]
+                return [urwid.Text(('empty_list', '- no matches -'))], 0
 
         except re.error as err:
-            return [urwid.Text(('empty_list', f'Error in regular epression: {err}'))]
+            return [urwid.Text(('empty_list', f'Error in regular epression: {err}'))], 0
 
     def filter_words(self, search_text: str, indices=None) -> tuple[list[urwid.Widget], list[int]]:
         """Filter the list with a list of words.
@@ -413,7 +414,7 @@ class Selecta(object):
 
         return items, matched
 
-    def filter_literal(self, search_text: str) -> list[urwid.Widget]:
+    def filter_literal(self, search_text: str) -> tuple[list[urwid.Widget], int]:
         search_text = search_text.strip('"')  # quote marks were only used to indicate literal search
         items: list[urwid.Widget] = []
         for line in self.lines:
@@ -424,9 +425,9 @@ class Selecta(object):
                     items.append(ItemWidgetPlain(line))
 
         if len(items) > 0:
-            return items
+            return items, len(items)
         else:
-            return [urwid.Text(('empty_list', '- no matches -'))]
+            return [urwid.Text(('empty_list', '- no matches -'))], 0
 
     def update_list(self, search_text: str = '') -> None:
         """Filter the list with the given search criteria."""
@@ -439,12 +440,14 @@ class Selecta(object):
         # search for whole string if search_text begins with quotation mark
         elif search_text.startswith('"'):
             self._filter_cache = None
-            self.update_item_list(self.filter_literal(search_text))
+            items, count = self.filter_literal(search_text)
+            self.update_item_list(items, count)
 
         # search for regexp if regexp modifier is set
         elif self.regexp_modifier:
             self._filter_cache = None
-            self.update_item_list(self.filter_regex(search_text))
+            items, count = self.filter_regex(search_text)
+            self.update_item_list(items, count)
 
         # split search into words and search for each word
         else:
@@ -502,9 +505,11 @@ class Selecta(object):
 
         elif input == 'ctrl a':
             self.toggle_modifier('case_modifier')
+            self.update_list(self.search_edit.get_edit_text().strip())
 
         elif input == 'ctrl r':
             self.toggle_modifier('regexp_modifier')
+            self.update_list(self.search_edit.get_edit_text().strip())
 
         # elif input_ == 'ctrl f':
         #     self.toggle_modifier('fuzzy_modifier')
