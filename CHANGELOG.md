@@ -1,4 +1,8 @@
 # Changelog
+## 0.3.0:
+ - use readline instead of TIOCSTI.
+ - parsing/searching speed improvements
+
 ## 0.2.2:
  - fix keybinding command
 

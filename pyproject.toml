@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "selecta"
-version = "0.2.2"
+version = "0.3.0"
 license = {file = "LICENSE.txt"}
 authors = [
   {name="Thomas Schüßler", email="vindolin@gmail.com" },
@@ -22,7 +22,7 @@ classifiers = [
   "Operating System :: MacOS",
   "Operating System :: POSIX :: Linux"]
 keywords = [
-  "bash", "zsh", "curses", "history"
+  "bash", "zsh", "fish", "curses", "history"
 ]
 
 [project.urls]
