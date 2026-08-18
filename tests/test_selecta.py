@@ -1,5 +1,8 @@
 import unittest
 from pathlib import Path
+
+import urwid
+
 from selecta import Selecta, mark_parts, ItemWidgetPlain, ItemWidgetWords
 
 
@@ -159,6 +162,17 @@ class TestSelecta(unittest.TestCase):
         selecta = self._selecta()
         selecta.edit_change(None, '"zzz_nothing')
         self.assertEqual(selecta.matching_line_count, 0)
+
+    def test_selected_none_by_default(self) -> None:
+        selecta = self._selecta()
+        self.assertIsNone(selecta.selected)
+
+    def test_enter_sets_selected(self) -> None:
+        selecta = self._selecta()
+        selecta.edit_change(None, 'apple')
+        with self.assertRaises(urwid.ExitMainLoop):
+            selecta.on_unhandled_input('enter')
+        self.assertEqual(selecta.selected, 'apple orange cherry apple banana banana pear')
 
     def test_mark_parts1(self) -> None:
         parts = mark_parts('orange cherry Orange apple Banana banana Pear apple', ['bana', 'apple', 'pear'], case_sensitive=False, highlight_matches=True)

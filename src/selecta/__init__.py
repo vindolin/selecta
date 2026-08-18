@@ -17,8 +17,6 @@ __version__ = '0.3.0'
 
 __all__ = []
 
-the_command = None
-
 
 def inject_command(command: str) -> None:
     """Inject the line into the terminal using TIOCSTI (legacy, disabled on Linux 6.2+)."""
@@ -34,8 +32,6 @@ def inject_command(command: str) -> None:
             'See https://github.com/vindolin/selecta for updated setup instructions.',
             file=sys.stderr,
         )
-    finally:
-        os.close(fd)
 
 def debug(value, prefix: str = '') -> None:
     """only usded when debugging"""
@@ -55,8 +51,6 @@ palette: list[tuple[str, str, str, str, str, str]] = [
     ('line', '', '', '', '', ''),
     ('line_focus', '', '', '', '#000', '#da0'),
 ]
-
-signal.signal(signal.SIGINT, lambda *_: sys.exit(0))  # perish in style
 
 
 class ItemWidget(urwid.WidgetWrap):
@@ -250,6 +244,8 @@ class Selecta(object):
 
         # cache of the last words-mode filter, used to narrow the scan while typing
         self._filter_cache = None
+        # the line selected when the user presses enter (None if cancelled)
+        self.selected: Optional[str] = None
 
         self.search_edit = SearchEdit(edit_text=initial_query)
         self.modifier_display = urwid.Text('')
@@ -292,8 +288,10 @@ class Selecta(object):
 
         self.update_list(initial_query)
 
-        if not test_mode:
-            self.loop.run()
+    def run(self) -> Optional[str]:
+        """Run the UI loop and return the selected line, or None if cancelled."""
+        self.loop.run()
+        return self.selected
 
     def parse_lines(self, infile: TextIOWrapper, reverse_order: bool,
                     remove_bash_prefix: bool, remove_zsh_prefix: bool, remove_duplicates: bool) -> list[str]:
@@ -499,8 +497,7 @@ class Selecta(object):
             self.view.set_header(urwid.AttrMap(
                 urwid.Text(f'selected: {line}'), 'head'))
 
-            # inject_command(line)
-            globals()['the_command'] = line
+            self.selected = line
             raise urwid.ExitMainLoop()
 
         elif input == 'ctrl a':
@@ -537,6 +534,7 @@ class Selecta(object):
 
 
 def main() -> None:
+    signal.signal(signal.SIGINT, lambda *_: sys.exit(0))  # perish in style
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--reverse-order',
@@ -604,7 +602,7 @@ def main() -> None:
             print('Error: could not open /dev/tty for TUI output', file=sys.stderr)
             sys.exit(1)
 
-    Selecta(
+    selected = Selecta(
         infile=args.infile,
         reverse_order=args.reverse_order,
         bash_mode=args.bash_mode,
@@ -617,12 +615,12 @@ def main() -> None:
         initial_query=args.query,
         # TODO support missing options from the original selector
         # TODO directory history would be sweet!
-    )
-    if the_command is not None:
+    ).run()
+    if selected is not None:
         if args.print_result:
-            print(the_command)
+            print(selected)
         else:
-            inject_command(the_command)
+            inject_command(selected)
 
 
 if __name__ == '__main__':
