@@ -200,6 +200,43 @@ class LineCountWidget(urwid.Text):
         self.set_text(f'{matching_line_count}/{self.line_count}')
 
 
+def help_text() -> str:
+    """Return the text shown on the F1 help screen."""
+    return (
+        f'selecta v{__version__}\n'
+        '\n'
+        'Keyboard shortcuts:\n'
+        '  enter           select the highlighted line\n'
+        '  up / down       move through the list\n'
+        '  ctrl+a          toggle case sensitivity\n'
+        '  ctrl+r          toggle regexp search\n'
+        '  backspace       delete the last character\n'
+        '  esc             back to the search box (quit from the search box)\n'
+        '  f1              show/hide this help\n'
+        '\n'
+        'Press f1, esc or q to close.'
+    )
+
+
+class HelpBox(urwid.WidgetWrap):
+    """Selectable help screen; consumes all keys except the close keys."""
+
+    signals = ['close']
+
+    def __init__(self, text: str) -> None:
+        lines = [urwid.Text(line) for line in text.splitlines()]
+        box = urwid.AttrMap(urwid.LineBox(urwid.Pile(lines)), 'head')
+        super().__init__(box)
+
+    def selectable(self) -> bool:
+        return True
+
+    def keypress(self, size, key: str):
+        if key in ('f1', 'esc', 'q'):
+            urwid.emit_signal(self, 'close')
+        return None  # consume all keys while the help screen is shown
+
+
 class Selecta(object):
     """The main class of Selecta."""
 
@@ -243,6 +280,11 @@ class Selecta(object):
         self.item_list: urwid.SimpleListWalker = urwid.SimpleListWalker(self.line_widgets)
         self.listbox = urwid.ListBox(self.item_list)
         self.view = urwid.Frame(body=self.listbox, header=header)
+
+        # F1 help screen (replaces the list body while shown)
+        self.help_shown = False
+        self.help_box = HelpBox(help_text())
+        urwid.connect_signal(self.help_box, 'close', self._hide_help)
 
         urwid.connect_signal(self.search_edit, 'change', self.edit_change)
         urwid.connect_signal(self.search_edit, 'done', self.edit_done)
@@ -331,6 +373,23 @@ class Selecta(object):
             self.modifier_display.set_text(f'[{", ".join(modifiers)}]')
         else:
             self.modifier_display.set_text('')
+
+    def _show_help(self) -> None:
+        self.view.body = self.help_box
+        self.help_shown = True
+        self.view.focus_position = 'body'
+
+    def _hide_help(self) -> None:
+        self.view.body = self.listbox
+        self.help_shown = False
+        self.view.focus_position = 'body'
+
+    def toggle_help(self) -> None:
+        """Show/hide the F1 help screen."""
+        if self.help_shown:
+            self._hide_help()
+        else:
+            self._show_help()
 
     def filter_regex(self, pattern: str) -> tuple[list[urwid.Widget], int]:
         """Filter the list with a regular expression.
@@ -496,10 +555,8 @@ class Selecta(object):
             self.view.set_focus('header')
 
         elif key == 'f1':
-            if (self.view.get_footer() is None):
-                self.view.set_footer(urwid.AttrMap(urwid.Text(f'selecta v{__version__}', align='center'), 'head'))
-            else:
-                self.view.set_footer(None)
+            self.toggle_help()
+            return True
 
         elif key == 'esc':
             self.view.set_focus('header')

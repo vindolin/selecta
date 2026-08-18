@@ -174,6 +174,23 @@ class TestSelecta(unittest.TestCase):
             selecta.on_unhandled_input('enter')
         self.assertEqual(selecta.selected, 'apple orange cherry apple banana banana pear')
 
+    def test_help_toggle(self) -> None:
+        selecta = self._selecta()
+        self.assertFalse(selecta.help_shown)
+        selecta.on_unhandled_input('f1')
+        self.assertTrue(selecta.help_shown)
+        self.assertIs(selecta.view.body, selecta.help_box)
+        selecta.on_unhandled_input('f1')
+        self.assertFalse(selecta.help_shown)
+        self.assertIs(selecta.view.body, selecta.listbox)
+
+    def test_help_closes_on_esc(self) -> None:
+        selecta = self._selecta()
+        selecta.on_unhandled_input('f1')
+        selecta.help_box.keypress((80,), 'esc')
+        self.assertFalse(selecta.help_shown)
+        self.assertIs(selecta.view.body, selecta.listbox)
+
     def test_mark_parts1(self) -> None:
         parts = mark_parts('orange cherry Orange apple Banana banana Pear apple', ['bana', 'apple', 'pear'], case_sensitive=False, highlight_matches=True)
         self.assertEqual(parts, ['orange cherry Orange ', ('match', 'apple'), ' ', ('match', 'Bana'), 'na ', ('match', 'bana'), 'na ', ('match', 'Pear'), ' ', ('match', 'apple')])
