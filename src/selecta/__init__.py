@@ -9,7 +9,7 @@ import signal
 import struct
 import sys
 import termios
-from typing import Union, Optional
+from typing import Optional, Sequence, Union
 
 import urwid
 
@@ -71,12 +71,16 @@ class ItemWidgetPlain(ItemWidget):
 
 
 class ItemWidgetLiteral(ItemWidget):
-    """Widget that displays a line as is."""
+    """Widget that highlights the literal search string in a line."""
     def __init__(self, line: str, search_text: str) -> None:
         self.line = line
         parts = [('match', part) if part == search_text else part
                  for part in re.split(f'({re.escape(search_text)})', self.line)]
-        text = urwid.AttrMap(urwid.Text(parts), 'line', 'line_focus')
+        text = urwid.AttrMap(
+            urwid.Text(parts),
+            'line',
+            {'match': 'match_focus', None: 'line_focus'}
+        )
         super().__init__(text)
 
 
@@ -158,10 +162,6 @@ class ItemWidgetWords(ItemWidget):
             self._text.set_text(parts)
         return super().render(size, focus)
 
-    def split_words(self, words: list[str], subject: str) -> list[str]:
-        """Split the subject into pieces for later styling."""
-        return [word for word in re.split(rf"({'|'.join(words)})", subject) if word]
-
 
 class SearchEdit(urwid.Edit):
     """Edit widget for the search input."""
@@ -187,22 +187,6 @@ class SearchEdit(urwid.Edit):
             return
 
         urwid.Edit.keypress(self, size, key)
-
-
-class ResultList(urwid.ListBox):
-    """List of the found lines."""
-    signals: list[str] = ['resize']
-    last_size: Optional[tuple[int, int]]
-
-    def __init__(self, body: urwid.ListWalker) -> None:
-        self.last_size = None
-        urwid.ListBox.__init__(self, body)
-
-    def render(self, size: tuple[int, int], focus=False) -> Union[urwid.CompositeCanvas, urwid.SolidCanvas]:
-        if size != self.last_size:
-            self.last_size = size
-            urwid.emit_signal(self, 'resize', size)
-        return urwid.ListBox.render(self, size, focus)
 
 
 class LineCountWidget(urwid.Text):
@@ -257,7 +241,7 @@ class Selecta(object):
         ], dividechars=1, focus_column=0), 'head', 'head')
 
         self.item_list: urwid.SimpleListWalker = urwid.SimpleListWalker(self.line_widgets)
-        self.listbox = ResultList(self.item_list)
+        self.listbox = urwid.ListBox(self.item_list)
         self.view = urwid.Frame(body=self.listbox, header=header)
 
         urwid.connect_signal(self.search_edit, 'change', self.edit_change)
@@ -267,8 +251,6 @@ class Selecta(object):
                              lambda *_: self.toggle_modifier('case_modifier'))
         urwid.connect_signal(self.search_edit, 'toggle_regexp_modifier',
                              lambda *_: self.toggle_modifier('regexp_modifier'))
-
-        urwid.connect_signal(self.listbox, 'resize', self.list_resize)
 
         self.update_modifiers()
         loop_kwargs = dict(
@@ -333,9 +315,6 @@ class Selecta(object):
         self.matching_line_count = count if count is not None else len(self.item_list)
         self.line_count_display.update(self.matching_line_count)
 
-    def list_resize(self, size) -> None:
-        """get's called when the window is resized"""
-
     def toggle_modifier(self, modifier: str) -> None:
         setattr(self, modifier, not getattr(self, modifier))
         self.update_modifiers()
@@ -380,7 +359,7 @@ class Selecta(object):
         except re.error as err:
             return [urwid.Text(('empty_list', f'Error in regular epression: {err}'))], 0
 
-    def filter_words(self, search_text: str, indices=None) -> tuple[list[urwid.Widget], list[int]]:
+    def filter_words(self, search_text: str, indices: Optional[Sequence[int]] = None) -> tuple[list[urwid.Widget], list[int]]:
         """Filter the list with a list of words.
 
         ``indices`` optionally restricts the scan to a subset of line indices
@@ -479,11 +458,11 @@ class Selecta(object):
     def edit_done(self, _) -> None:
         self.view.focus_position = 'body'
 
-    def on_unhandled_input(self, input: Union[str, tuple[str, int, int, int]]) -> bool:
-        if isinstance(input, tuple):  # mouse events
+    def on_unhandled_input(self, key: Union[str, tuple[str, int, int, int]]) -> bool:
+        if isinstance(key, tuple):  # mouse events
             return False
 
-        if input == 'enter':
+        if key == 'enter':
             focused_widget = self.listbox.get_focus()[0]
 
             if focused_widget is None:
@@ -500,33 +479,33 @@ class Selecta(object):
             self.selected = line
             raise urwid.ExitMainLoop()
 
-        elif input == 'ctrl a':
+        elif key == 'ctrl a':
             self.toggle_modifier('case_modifier')
             self.update_list(self.search_edit.get_edit_text().strip())
 
-        elif input == 'ctrl r':
+        elif key == 'ctrl r':
             self.toggle_modifier('regexp_modifier')
             self.update_list(self.search_edit.get_edit_text().strip())
 
-        # elif input_ == 'ctrl f':
+        # elif key == 'ctrl f':
         #     self.toggle_modifier('fuzzy_modifier')
 
-        elif input == 'backspace':
+        elif key == 'backspace':
             self.search_edit.set_edit_text(self.search_edit.get_text()[0][:-1])
             self.search_edit.set_edit_pos(len(self.search_edit.get_text()[0]))
             self.view.set_focus('header')
 
-        elif input == 'f1':
+        elif key == 'f1':
             if (self.view.get_footer() is None):
                 self.view.set_footer(urwid.AttrMap(urwid.Text(f'selecta v{__version__}', align='center'), 'head'))
             else:
                 self.view.set_footer(None)
 
-        elif input == 'esc':
+        elif key == 'esc':
             self.view.set_focus('header')
 
-        elif len(input) == 1:  # ignore things like tab, enter
-            self.search_edit.set_edit_text(self.search_edit.get_text()[0] + input)
+        elif len(key) == 1:  # ignore things like tab, enter
+            self.search_edit.set_edit_text(self.search_edit.get_text()[0] + key)
             self.search_edit.set_edit_pos(len(self.search_edit.get_text()[0]))
             self.view.set_focus('header')
 
@@ -586,7 +565,7 @@ def main() -> None:
     # if no infile is given, print help and exit
     if args.infile.name == '<stdin>':
         parser.print_help()
-        exit('\nYou must provide an infile!')
+        parser.exit(2, '\nYou must provide an infile!\n')
 
     if args.bash_mode or args.zsh_mode:
         args.reverse_order = True
