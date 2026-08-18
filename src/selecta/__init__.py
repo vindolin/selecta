@@ -219,7 +219,8 @@ class Selecta(object):
                  case_sensitive: bool = False, regexp: bool = False,
                  remove_duplicates: bool = False, highlight_matches: bool = False,
                  test_mode: bool = False,
-                 screen: Optional[urwid.raw_display.Screen] = None) -> None:
+                 screen: Optional[urwid.BaseScreen] = None,
+                 initial_query: str = '') -> None:
 
         self.highlight_matches = highlight_matches
         self.regexp_modifier = regexp
@@ -229,7 +230,7 @@ class Selecta(object):
         self.lines = self.parse_lines(infile, reverse_order, bash_mode, zsh_mode, remove_duplicates)
         self.matching_line_count = len(self.lines)
 
-        self.search_edit = SearchEdit(edit_text='')
+        self.search_edit = SearchEdit(edit_text=initial_query)
         self.modifier_display = urwid.Text('')
         self.line_count_display = LineCountWidget(self.matching_line_count)
         header = urwid.AttrMap(urwid.Columns([
@@ -268,7 +269,7 @@ class Selecta(object):
         self.loop.screen.set_terminal_properties(colors=256)  # type: ignore - make pylance happy
         # self.loop.screen.set_terminal_properties(colors=2**24)
 
-        self.update_list('')
+        self.update_list(initial_query)
 
         if not test_mode:
             self.loop.run()
@@ -523,6 +524,9 @@ def main() -> None:
                         action='store_true', default=False,
                         help='print the selected command to stdout (use with shell wrapper for TIOCSTI-free operation)')
 
+    parser.add_argument('-q', '--query', default='',
+                        help='initial search string (e.g. the current shell command line)')
+
     args = parser.parse_args()
 
     # debug('\033[2J')
@@ -556,6 +560,7 @@ def main() -> None:
         remove_duplicates=args.remove_duplicates,
         highlight_matches=args.highlight_matches,
         screen=screen,
+        initial_query=args.query,
         # TODO support missing options from the original selector
         # TODO directory history would be sweet!
     )

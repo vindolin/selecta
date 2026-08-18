@@ -46,6 +46,9 @@ selecta now uses the same approach as `fzf`: the TUI draws to `/dev/tty`, and th
 is printed to stdout. A shell wrapper function captures this output and uses shell-native readline
 commands to place the text on your prompt.
 
+The `-q/--query` flag pre-fills the search box with the current command line, so if you've already
+typed part of a command before pressing the hotkey, selecta starts searching with it.
+
 ### Manual shell setup
 
 If you prefer to set up the integration manually, add the following to your rc file:
@@ -56,9 +59,9 @@ If you prefer to set up the integration manually, add the following to your rc f
 # selecta shell integration (TIOCSTI-free)
 selecta_insert() {
   local result
-  result=$(selecta -b -y -p <(history))
+  result=$(selecta -b -y -p -q "$READLINE_LINE" <(history))
   if [[ -n "$result" ]]; then
-    READLINE_LINE="${result}${READLINE_LINE}"
+    READLINE_LINE="$result"
     READLINE_POINT=${#result}
   fi
 }
@@ -71,9 +74,10 @@ bind -x '"\C-[s": selecta_insert'
 # selecta shell integration (TIOCSTI-free)
 selecta_insert() {
   local result
-  result=$(selecta -z -y -p <(history 0))
+  result=$(selecta -z -y -p -q "$BUFFER" <(history 0))
   if [[ -n "$result" ]]; then
-    LBUFFER="${result}${LBUFFER}"
+    BUFFER="$result"
+    CURSOR=${#BUFFER}
   fi
 }
 zle -N selecta_insert
@@ -85,9 +89,9 @@ bindkey '^[s' selecta_insert
 ```fish
 # selecta shell integration (TIOCSTI-free)
 function selecta_insert
-  set -l result (PYTHON_GIL=1 selecta -z -y -p (history | cut -d " " -f 1 --complement | psub))
+  set -l result (PYTHON_GIL=1 selecta -z -y -p -q (commandline) (history | cut -d " " -f 1 --complement | psub))
   if test -n "$result"
-    commandline -r "$result"(commandline)
+    commandline -r "$result"
   end
 end
 bind \es selecta_insert
@@ -138,5 +142,7 @@ selecta_add_keybinding {key}
                             substrings or regexp
       -p, --print           print the selected command to stdout
                             (use with shell wrapper for TIOCSTI-free operation)
+      -q, --query           initial search string (e.g. the current shell
+                            command line)
       -v, --version         print selecta version
 ```

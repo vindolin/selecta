@@ -62,6 +62,29 @@ class TestSelecta(unittest.TestCase):
         selecta = self.run_test('test_empty.txt', 'foo')
         self.assertEqual(selecta.matching_line_count, 0)
 
+    def test_initial_query_prefills_search(self) -> None:
+        with open(Path(__file__).parent / 'data' / 'test.txt', 'r') as fh:
+            selecta = Selecta(
+                infile=fh,
+                reverse_order=False,
+                remove_duplicates=True,
+                initial_query='app bana',
+                test_mode=True,
+            )
+        # the search box starts pre-filled and the list is filtered
+        self.assertEqual(selecta.search_edit.get_edit_text(), 'app bana')
+        self.assertEqual(selecta.matching_line_count, 2)
+
+    def test_initial_query_default_shows_all(self) -> None:
+        with open(Path(__file__).parent / 'data' / 'test.txt', 'r') as fh:
+            selecta = Selecta(
+                infile=fh,
+                reverse_order=False,
+                test_mode=True,
+            )
+        self.assertEqual(selecta.search_edit.get_edit_text(), '')
+        self.assertEqual(selecta.matching_line_count, len(selecta.lines))
+
     def test_mark_parts1(self) -> None:
         parts = mark_parts('orange cherry Orange apple Banana banana Pear apple', ['bana', 'apple', 'pear'], case_sensitive=False, highlight_matches=True)
         self.assertEqual(parts, ['orange cherry Orange ', ('match', 'apple'), ' ', ('match', 'Bana'), 'na ', ('match', 'bana'), 'na ', ('match', 'Pear'), ' ', ('match', 'apple')])

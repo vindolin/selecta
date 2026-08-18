@@ -10,9 +10,9 @@ BASH_WRAPPER = r'''
 # selecta shell integration (TIOCSTI-free)
 selecta_insert() {
   local result
-  result=$(selecta -b -y -p <(history))
+  result=$(selecta -b -y -p -q "$READLINE_LINE" <(history))
   if [[ -n "$result" ]]; then
-    READLINE_LINE="${result}${READLINE_LINE}"
+    READLINE_LINE="$result"
     READLINE_POINT=${#result}
   fi
 }
@@ -22,9 +22,10 @@ ZSH_WRAPPER = r'''
 # selecta shell integration (TIOCSTI-free)
 selecta_insert() {
   local result
-  result=$(selecta -z -y -p <(history 0))
+  result=$(selecta -z -y -p -q "$BUFFER" <(history 0))
   if [[ -n "$result" ]]; then
-    LBUFFER="${result}${LBUFFER}"
+    BUFFER="$result"
+    CURSOR=${#BUFFER}
   fi
 }
 '''
@@ -32,9 +33,9 @@ selecta_insert() {
 FISH_WRAPPER = r'''
 # selecta shell integration (TIOCSTI-free)
 function selecta_insert
-  set -l result (PYTHON_GIL=1 selecta -z -y -p (history | cut -d " " -f 1 --complement | psub))
+  set -l result (PYTHON_GIL=1 selecta -z -y -p -q (commandline) (history | cut -d " " -f 1 --complement | psub))
   if test -n "$result"
-    commandline -r "$result"(commandline)
+    commandline -r "$result"
   end
 end
 '''
